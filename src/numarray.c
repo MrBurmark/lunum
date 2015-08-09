@@ -814,10 +814,14 @@ void array_assign_from_array(Array *A, const Array *B)
 void array_transpose(const Array *A, Array *B)
 {
   const int           ndims = A->ndims;
-  if (ndims < 2) return; /* nothing to do for linear array */
-
   const void   *restrict a = A->data;
   void         *restrict b = B->data;
+
+  if (ndims < 2) {
+    /* copy linear array */
+    memcpy(b, a, A->size * array_sizeof(A->dtype));
+    return;
+  }
 
   const size_t *restrict shape = A->shape;
   size_t       *restrict indices = (size_t *) calloc(ndims, sizeof(size_t));
