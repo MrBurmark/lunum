@@ -789,9 +789,9 @@ void array_assign_from_array(Array *A, const Array *B)
 
 #define ADVANCE_INDICES() \
 {\
+  ++(indices[0]);\
   for(int i = 0; i < ndims-1; ++i) {\
-    ++(indices[i]);\
-    if (indices[i] == shape[i]){\
+    if (indices[i] >= shape[i]){\
       indices[i] = 0;\
       ++(indices[i+1]);\
     } else {\
