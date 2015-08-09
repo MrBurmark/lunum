@@ -2,6 +2,7 @@
 require 'lunum'
 
 local function test1()
+   print('test1')
    local A = lunum.zeros(100)
 
    for k,v in pairs(getmetatable(A)) do
@@ -18,12 +19,14 @@ local function test1()
 end
 
 local function test2()
+   print('test2')
    local A = lunum.array({0,1,2,3,4,5,6,7,8,9})
    A[4] = 4.5
    print(A[4])
 end
 
 local function test3()
+   print('test3')
    local A = lunum.array({0,1,2,3,4,5,6,7,8,9})
    local B = lunum.array({9,8,7,6,5,4,3,2,1,0})
    print("(A + B)[3] = ", (A + B)[2])
@@ -33,18 +36,21 @@ local function test3()
 end
 
 local function test4()
+   print('test4')
    local A = lunum.array({0,1,2,3,4,5,6,7,8,9}, lunum.float)
    local B = lunum.array({0,1,2,3,4,5,6,7,8,9}, lunum.double)
    print("(A + B)[3] = ", (A + B)[2])
 end
 
 local function test5()
+   print('test5')
    print("[char]    A*10 = ", lunum.array({0,1,2,3,4,5,6,7,8,9}, lunum.char) * 10)
    print("[float]   A    = ", lunum.array({0,1,2,3,4,5,6,7,8,9}, lunum.float))
    print("[complex] A    = ", lunum.array({0,1,2,3,4,5,6,7,8,9}, lunum.complex))
 end
 
 local function test6()
+   print('test6')
    local I = lunum.I
    local A = lunum.zeros(109, lunum.complex)
    A[4] = 1
@@ -54,6 +60,7 @@ local function test6()
 end
 
 local function test7()
+   print('test7')
    local I = lunum.I
    local A = lunum.array({1,2,3})
    print(lunum.sin(A))
@@ -64,9 +71,10 @@ local function test7()
 end
 
 local function test8()
+   print('test8')
    local A = lunum.array({1,2,3,4,5,6,7,8})
    lunum.resize(A, {4,2})
-   print(unpack(A:shape()))
+   print(table.unpack(A:shape()))
    print("A(0,0) = ", A(0,0))
    print("A(0,1) = ", A(0,1))
    print("A(1,0) = ", A(1,0))
@@ -79,6 +87,7 @@ end
 
 
 local function test9()
+   print('test9')
    local B = lunum.array({1,2,3,4,5,6,7,8,9,10,11,12})
    lunum.resize(B, {2,1,3,2})
 
@@ -93,6 +102,7 @@ end
 
 
 local function test10()
+   print('test10')
    print("testing apply function, and resize function")
 
    local B = lunum.range(100)
@@ -117,21 +127,23 @@ end
 
 
 local function test11()
+   print('test11')
    local C = lunum.array({0,1,true,false}, lunum.bool)
    print("{0,1,true,false} = ", C)
 
    local A = lunum.array({1,2,3})
    local B = lunum.array({3,2,1})
    print("A = ", A, "B = ", B)
-   print("A == A ? ", A:eq(B))
-   print("A ~= A ? ", A:ne(B))
-   print("A <  A ? ", A:lt(B))
-   print("A <= A ? ", A:le(B))
-   print("A >  A ? ", A:gt(B))
-   print("A >= A ? ", A:ge(B))
+   print("A == B ? ", A:eq(B))
+   print("A ~= B ? ", A:ne(B))
+   print("A <  B ? ", A:lt(B))
+   print("A <= B ? ", A:le(B))
+   print("A >  B ? ", A:gt(B))
+   print("A >= B ? ", A:ge(B))
 end
 
 local function test12()
+   print('test12')
    print "testing type flags"
    local C = lunum.array({1,2,3}, 'd')
    print("double  ?= ", C:dtype())
@@ -141,7 +153,6 @@ end
 
 test1()
 test2()
-
 test3()
 test4()
 test5()
@@ -150,6 +161,5 @@ test7()
 test8()
 test9()
 test10()
-
 test11()
 test12()

@@ -6,22 +6,21 @@
 
 #define LUNUM_PRIVATE_API
 #include "lunum.h"
-#include "lauxlib.h"
 
 
-void lunum_pusharray1(lua_State *L, struct Array *B)
+void lunum_pusharray1(lua_State *L, Array *B)
 {
   _lunum_register_array(L, B);
 }
 
-void lunum_pusharray2(lua_State *L, void *data, enum ArrayType T, int N)
+void lunum_pusharray2(lua_State *L, void *data, ArrayType T, size_t N)
 {
-  struct Array A = array_new_zeros(N, T);
+  Array A = array_new_zeros(N, T);
   memcpy(A.data, data, N*array_sizeof(T));
   lunum_pusharray1(L, &A);
 }
 
-struct Array *lunum_checkarray1(lua_State *L, int pos)
+Array *lunum_checkarray1(lua_State *L, int pos)
 {
   lua_pushvalue(L, pos);
 
@@ -32,18 +31,18 @@ struct Array *lunum_checkarray1(lua_State *L, int pos)
   lua_pushstring(L, "__cstruct");
   lua_rawget(L, -2);
 
-  struct Array *A = (struct Array*) lua_touserdata(L, -1);
+  Array *A = (Array*) lua_touserdata(L, -1);
   lua_pop(L, 2);
 
   return A;
 }
 
-void *lunum_checkarray2(lua_State *L, int pos, enum ArrayType T, int *N)
+void *lunum_checkarray2(lua_State *L, int pos, ArrayType T, size_t *N)
 {
   if (lunum_upcast(L, pos, T, 1)) {
     lua_replace(L, pos);
   }
-  struct Array *A = lunum_checkarray1(L, pos);
+  Array *A = lunum_checkarray1(L, pos);
   if (N != NULL) *N = A->size;
   return A->data;
 }
@@ -51,11 +50,11 @@ void *lunum_checkarray2(lua_State *L, int pos, enum ArrayType T, int *N)
 
 void lunum_astable(lua_State *L, int pos)
 {
-  struct Array *A = lunum_checkarray1(L, pos);
+  Array *A = lunum_checkarray1(L, pos);
   const void *a = A->data;
 
   lua_newtable(L);
-  for (int i=0; i<A->size; ++i) {
+  for (size_t i=0; i<A->size; ++i) {
 
     lua_pushnumber(L, i+1);
 
@@ -65,6 +64,7 @@ void lunum_astable(lua_State *L, int pos)
     case ARRAY_TYPE_SHORT   : lua_pushnumber   (L, ((short   *)a)[i]); break;
     case ARRAY_TYPE_INT     : lua_pushnumber   (L, ((int     *)a)[i]); break;
     case ARRAY_TYPE_LONG    : lua_pushnumber   (L, ((long    *)a)[i]); break;
+    case ARRAY_TYPE_SIZE_T  : lua_pushnumber   (L, ((size_t  *)a)[i]); break;
     case ARRAY_TYPE_FLOAT   : lua_pushnumber   (L, ((float   *)a)[i]); break;
     case ARRAY_TYPE_DOUBLE  : lua_pushnumber   (L, ((double  *)a)[i]); break;
     case ARRAY_TYPE_COMPLEX : lunum_pushcomplex(L, ((Complex *)a)[i]); break;
@@ -90,7 +90,7 @@ Complex lunum_checkcomplex(lua_State *L, int n)
 
 
 
-int lunum_upcast(lua_State *L, int pos, enum ArrayType T, int N)
+int lunum_upcast(lua_State *L, int pos, ArrayType T, size_t N)
 // -----------------------------------------------------------------------------
 // If the object at position 'pos' is already an array of dtype 'T', then push
 // nothing and return 0. If the dtype is not 'T', then return 1 and push a copy
@@ -108,7 +108,7 @@ int lunum_upcast(lua_State *L, int pos, enum ArrayType T, int N)
   // ---------------------------------------------------------------------------
   if (lunum_hasmetatable(L, pos, "array")) {
 
-    struct Array *A = lunum_checkarray1(L, pos);
+    Array *A = lunum_checkarray1(L, pos);
 
     if (A->dtype == T) {
       return 0;
@@ -116,7 +116,7 @@ int lunum_upcast(lua_State *L, int pos, enum ArrayType T, int N)
 
     else {
 
-      struct Array A_ = array_new_copy(A, T);
+      Array A_ = array_new_copy(A, T);
       lunum_pusharray1(L, &A_);
       return 1;
     }
@@ -126,9 +126,9 @@ int lunum_upcast(lua_State *L, int pos, enum ArrayType T, int N)
   // ---------------------------------------------------------------------------
   else if (lua_istable(L, pos)) {
 
-    struct Array A = array_new_zeros(lua_rawlen(L, pos), T);
+    Array A = array_new_zeros(lua_rawlen(L, pos), T);
 
-    for (int i=0; i<A.size; ++i) {
+    for (size_t i=0; i<A.size; ++i) {
 
       lua_pushnumber(L, i+1);
       lua_gettable(L, pos);
@@ -148,7 +148,7 @@ int lunum_upcast(lua_State *L, int pos, enum ArrayType T, int N)
   // ---------------------------------------------------------------------------
   else if (lua_isboolean(L, pos)) {
     const Bool x = lua_toboolean(L, pos);
-    struct Array A = array_new_zeros(N, ARRAY_TYPE_BOOL);
+    Array A = array_new_zeros(N, ARRAY_TYPE_BOOL);
     array_assign_from_scalar(&A, &x);
     lunum_pusharray1(L, &A);
     return 1;
@@ -158,9 +158,9 @@ int lunum_upcast(lua_State *L, int pos, enum ArrayType T, int N)
   // ---------------------------------------------------------------------------
   else if (lua_isnumber(L, pos)) {
     const double x = lua_tonumber(L, pos);
-    struct Array A = array_new_zeros(N, ARRAY_TYPE_DOUBLE);
+    Array A = array_new_zeros(N, ARRAY_TYPE_DOUBLE);
     array_assign_from_scalar(&A, &x);
-    struct Array B = array_new_copy(&A, T);
+    Array B = array_new_copy(&A, T);
     array_del(&A);
     lunum_pusharray1(L, &B);
     return 1;
@@ -171,7 +171,7 @@ int lunum_upcast(lua_State *L, int pos, enum ArrayType T, int N)
   else if (lunum_hasmetatable(L, pos, "complex")) {
 
     const Complex z = *((Complex*) lua_touserdata(L, pos));
-    struct Array A = array_new_zeros(N, ARRAY_TYPE_COMPLEX);
+    Array A = array_new_zeros(N, ARRAY_TYPE_COMPLEX);
     array_assign_from_scalar(&A, &z);
     lunum_pusharray1(L, &A);
     return 1;
@@ -198,7 +198,7 @@ int lunum_hasmetatable(lua_State *L, int pos, const char *name)
 }
 
 
-void *lunum_tovalue(lua_State *L, enum ArrayType T)
+void *lunum_tovalue(lua_State *L, ArrayType T)
 {
   Complex x=0.0;
 
@@ -223,6 +223,7 @@ void *lunum_tovalue(lua_State *L, enum ArrayType T)
   case ARRAY_TYPE_SHORT   : *((short  *)y) = x; break;
   case ARRAY_TYPE_INT     : *((int    *)y) = x; break;
   case ARRAY_TYPE_LONG    : *((long   *)y) = x; break;
+  case ARRAY_TYPE_SIZE_T  : *((size_t *)y) = x; break;
   case ARRAY_TYPE_FLOAT   : *((float  *)y) = x; break;
   case ARRAY_TYPE_DOUBLE  : *((double *)y) = x; break;
   case ARRAY_TYPE_COMPLEX : *((Complex*)y) = x; break;

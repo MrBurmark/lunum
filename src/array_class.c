@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "lunum.h"
-#include "lauxlib.h"
 
 
 static int luaC_array_dtype(lua_State *L);
@@ -15,7 +14,7 @@ static int luaC_array_astype(lua_State *L);
 static int luaC_array_tofile(lua_State *L);
 
 
-void _lunum_register_array(lua_State *L, struct Array *B)
+void _lunum_register_array(lua_State *L, Array *B)
 {
   lua_newtable(L);
 
@@ -56,12 +55,11 @@ void _lunum_register_array(lua_State *L, struct Array *B)
   B->owns = 0;
   B->data = data;
 
-  struct Array *A = (struct Array*) lua_newuserdata(L, sizeof(struct Array));
+  Array *A = (Array*) lua_newuserdata(L, sizeof(Array));
   lua_setfield(L, -2, "__cstruct");
   *A = *B;
 
-  luaL_getmetatable(L, "array");
-  lua_setmetatable(L, -2);
+  luaL_setmetatable(L, "array");
 }
 
 
@@ -74,11 +72,11 @@ int luaC_array_dtype(lua_State *L)
 // value of the Array's type.
 // -----------------------------------------------------------------------------
 {
-  struct Array *A = lunum_checkarray1(L, 1);
+  Array *A = lunum_checkarray1(L, 1);
 
   if (lua_isstring(L, 2)) {
     if (strcmp(lua_tostring(L, 2), "enum") == 0) {
-      lua_pushnumber(L, A->dtype);
+      lua_pushinteger(L, A->dtype);
       return 1;
     }
   }
@@ -93,8 +91,8 @@ int luaC_array_shape(lua_State *L)
 // is given, return it as an array.
 // -----------------------------------------------------------------------------
 {
-  struct Array *A = lunum_checkarray1(L, 1);
-  lunum_pusharray2(L, A->shape, ARRAY_TYPE_INT, A->ndims);
+  Array *A = lunum_checkarray1(L, 1);
+  lunum_pusharray2(L, A->shape, ARRAY_TYPE_SIZE_T, (size_t)A->ndims);
 
   if (lua_isstring(L, 2)) {
     if (strcmp(lua_tostring(L, 2), "array") == 0) {
@@ -109,8 +107,8 @@ int luaC_array_shape(lua_State *L)
 
 int luaC_array_size(lua_State *L)
 {
-  struct Array *A = lunum_checkarray1(L, 1);
-  lua_pushnumber(L, A->size);
+  Array *A = lunum_checkarray1(L, 1);
+  lua_pushinteger(L, A->size);
   return 1;
 }
 
@@ -122,17 +120,17 @@ int luaC_array_astable(lua_State *L)
 
 int luaC_array_astype(lua_State *L)
 {
-  struct Array *A = lunum_checkarray1(L, 1);
-  enum ArrayType T;
+  Array *A = lunum_checkarray1(L, 1);
+  ArrayType T;
 
   if (lua_type(L, 2) == LUA_TSTRING) {
     T = array_typeflag(lua_tostring(L, 2)[0]);
   }
   else {
-    T = (enum ArrayType) luaL_checkinteger(L, 2);
+    T = (ArrayType) luaL_checkinteger(L, 2);
   }
 
-  struct Array B = array_new_copy(A, T);
+  Array B = array_new_copy(A, T);
   lunum_pusharray1(L, &B);
   return 1;
 }
@@ -144,7 +142,7 @@ int luaC_array_tofile(lua_State *L)
 // Writes the array 'A' as binary data to the file named 'fname'.
 // -----------------------------------------------------------------------------
 {
-  struct Array *A = lunum_checkarray1(L, 1);
+  Array *A = lunum_checkarray1(L, 1);
   const char *fname = luaL_checkstring(L, 2);
   FILE *output = fopen(fname, "wb");
 

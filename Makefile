@@ -40,10 +40,10 @@ OPTIM = -O2
 DEBUG =
 
 # location of Lua install on this system
-LUA_HOME ?= $(PWD)/lua
+LUA_HOME ?= /usr/local
 
 # where to install lunum library and include
-INSTALL_TOP = $(PWD)
+INSTALL_TOP = /usr/local
 
 # C Flags
 CFLAGS = $(WARN) $(OPTIM) $(DEBUG) $(FPIC)

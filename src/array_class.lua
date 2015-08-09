@@ -157,7 +157,7 @@ local function indices(A, kind)
          end
       end
       if I[1] == N[1] then return nil end
-      return unpack(I)
+      return table.unpack(I)
    end
 
    local function g()
@@ -250,7 +250,7 @@ local function apply(f,...)
    for i=0,B:size()-1 do
       local x = { }
       for d=1,#A do x[d] = A[d][i] end
-      B[i] = f(unpack(x))
+      B[i] = f(table.unpack(x))
    end
    return B
 end
@@ -298,7 +298,7 @@ local function __build_slice(A,t)
       sT[4][i] = s[i][4] or 0            -- squeeze
    end
 
-   return lunum.slice(A, unpack(sT))
+   return lunum.slice(A, table.unpack(sT))
 end
 
 -- -----------------------------------------------------------------------------
