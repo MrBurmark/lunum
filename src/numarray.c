@@ -6,162 +6,172 @@
 #include <complex.h>
 #include "lunum.h"
 
-#define EXPR_UNM(T) {for(size_t i=0;i<N;++i)((T*)b)[i]=-((T*)a)[i];}
-#define EXPR_BNOT(T) {for(size_t i=0;i<N;++i)((T*)b)[i]=~((T*)a)[i];}
+#define EXPR_UNM(Ta, Tb) {for(size_t i=0;i<N;++i)((Tb*)b)[i]=-((Ta*)a)[i];}
+#define EXPR_BNOT(Ta, Tb) {for(size_t i=0;i<N;++i)((Tb*)b)[i]=~((Ta*)a)[i];}
+#define EXPR_ERR_UNARY(Ta, Tb) {luaL_error(L, "Invalid operation");}
 
-#define EXPR_AN_ADD(T) {\
+#define EXPR_AN_ADD(Ta, Tb, Tc) {\
   if (array_first) {\
-    for(size_t i=0;i<N;++i)((T*)c)[i]=((T*)a)[i]+((T*)b)[0];\
+    for(size_t i=0;i<N;++i)((Tc*)c)[i]=((Ta*)a)[i]+((Tb*)b)[0];\
   } else {\
-    for(size_t i=0;i<N;++i)((T*)c)[i]=((T*)b)[0]+((T*)a)[i];\
+    for(size_t i=0;i<N;++i)((Tc*)c)[i]=((Tb*)b)[0]+((Ta*)a)[i];\
   }\
 }
-#define EXPR_AN_SUB(T) {\
+#define EXPR_AN_SUB(Ta, Tb, Tc) {\
   if (array_first) {\
-    for(size_t i=0;i<N;++i)((T*)c)[i]=((T*)a)[i]-((T*)b)[0];\
+    for(size_t i=0;i<N;++i)((Tc*)c)[i]=((Ta*)a)[i]-((Tb*)b)[0];\
   } else {\
-    for(size_t i=0;i<N;++i)((T*)c)[i]=((T*)b)[0]-((T*)a)[i];\
+    for(size_t i=0;i<N;++i)((Tc*)c)[i]=((Tb*)b)[0]-((Ta*)a)[i];\
   }\
 }
-#define EXPR_AN_MUL(T) {\
+#define EXPR_AN_MUL(Ta, Tb, Tc) {\
   if (array_first) {\
-    for(size_t i=0;i<N;++i)((T*)c)[i]=((T*)a)[i]*((T*)b)[0];\
+    for(size_t i=0;i<N;++i)((Tc*)c)[i]=((Ta*)a)[i]*((Tb*)b)[0];\
   } else {\
-    for(size_t i=0;i<N;++i)((T*)c)[i]=((T*)b)[0]*((T*)a)[i];\
+    for(size_t i=0;i<N;++i)((Tc*)c)[i]=((Tb*)b)[0]*((Ta*)a)[i];\
   }\
 }
-#define EXPR_AN_DIV(T) {\
+#define EXPR_AN_DIV(Ta, Tb, Tc) {\
   if (array_first) {\
-    for(size_t i=0;i<N;++i)((T*)c)[i]=((T*)a)[i]/((T*)b)[0];\
+    for(size_t i=0;i<N;++i)((Tc*)c)[i]=((Ta*)a)[i]/((Tb*)b)[0];\
   } else {\
-    for(size_t i=0;i<N;++i)((T*)c)[i]=((T*)b)[0]/((T*)a)[i];\
+    for(size_t i=0;i<N;++i)((Tc*)c)[i]=((Tb*)b)[0]/((Ta*)a)[i];\
   }\
 }
-#define EXPR_AN_IDIVF(T) {\
+#define EXPR_AN_IDIVF(Ta, Tb, Tc) {\
   if (array_first) {\
-    for(size_t i=0;i<N;++i)((T*)c)[i]=(T)floor(((T*)a)[i]/((T*)b)[0]);\
+    for(size_t i=0;i<N;++i)((Tc*)c)[i]=(Tc)floor(((Ta*)a)[i]/((Tb*)b)[0]);\
   } else {\
-    for(size_t i=0;i<N;++i)((T*)c)[i]=(T)floor(((T*)b)[0]/((T*)a)[i]);\
+    for(size_t i=0;i<N;++i)((Tc*)c)[i]=(Tc)floor(((Tb*)b)[0]/((Ta*)a)[i]);\
   }\
 }
-#define EXPR_AN_MOD(T) {\
+#define EXPR_AN_MOD(Ta, Tb, Tc) {\
   if (array_first) {\
-    for(size_t i=0;i<N;++i)((T*)c)[i]=((T*)a)[i]%((T*)b)[0];\
+    for(size_t i=0;i<N;++i)((Tc*)c)[i]=((Ta*)a)[i]%((Tb*)b)[0];\
   } else {\
-    for(size_t i=0;i<N;++i)((T*)c)[i]=((T*)b)[0]%((T*)a)[i];\
+    for(size_t i=0;i<N;++i)((Tc*)c)[i]=((Tb*)b)[0]%((Ta*)a)[i];\
   }\
 }
-#define EXPR_AN_MODF(T) {\
+#define EXPR_AN_MODF(Ta, Tb, Tc) {\
   if (array_first) {\
-    for(size_t i=0;i<N;++i)((T*)c)[i]=((T*)a)[i]-(T)floor(((T*)a)[i]/((T*)b)[0])*((T*)b)[0];\
+    for(size_t i=0;i<N;++i)((Tc*)c)[i]=((Ta*)a)[i]-(Tc)floor(((Ta*)a)[i]/((Tb*)b)[0])*((Tb*)b)[0];\
   } else {\
-    for(size_t i=0;i<N;++i)((T*)c)[i]=((T*)b)[0]-(T)floor(((T*)b)[0]/((T*)a)[i])*((T*)a)[i];\
+    for(size_t i=0;i<N;++i)((Tc*)c)[i]=((Tb*)b)[0]-(Tc)floor(((Tb*)b)[0]/((Ta*)a)[i])*((Ta*)a)[i];\
   }\
 }
-#define EXPR_AN_POW(T) {\
+#define EXPR_AN_POW(Ta, Tb, Tc) {\
   if (array_first) {\
-    for(size_t i=0;i<N;++i)((T*)c)[i]=(T)pow(((T*)a)[i],((T*)b)[0]);\
+    for(size_t i=0;i<N;++i)((Tc*)c)[i]=(Tc)pow(((Ta*)a)[i],((Tb*)b)[0]);\
   } else {\
-    for(size_t i=0;i<N;++i)((T*)c)[i]=(T)pow(((T*)b)[0],((T*)a)[i]);\
+    for(size_t i=0;i<N;++i)((Tc*)c)[i]=(Tc)pow(((Tb*)b)[0],((Ta*)a)[i]);\
   }\
 }
-#define EXPR_AN_COW(T) {\
+#define EXPR_AN_COW(Ta, Tb, Tc) {\
   if (array_first) {\
-    for(size_t i=0;i<N;++i)((T*)c)[i]=(T)cpow(((T*)a)[i],((T*)b)[0]);\
+    for(size_t i=0;i<N;++i)((Tc*)c)[i]=(Tc)cpow(((Ta*)a)[i],((Tb*)b)[0]);\
   } else {\
-    for(size_t i=0;i<N;++i)((T*)c)[i]=(T)cpow(((T*)b)[0],((T*)a)[i]);\
+    for(size_t i=0;i<N;++i)((Tc*)c)[i]=(Tc)cpow(((Tb*)b)[0],((Ta*)a)[i]);\
   }\
 }
-#define EXPR_AN_BAND(T) {\
+#define EXPR_AN_BAND(Ta, Tb, Tc) {\
   if (array_first) {\
-    for(size_t i=0;i<N;++i)((T*)c)[i]=((T*)a)[i]&((T*)b)[0];\
+    for(size_t i=0;i<N;++i)((Tc*)c)[i]=((Ta*)a)[i]&((Tb*)b)[0];\
   } else {\
-    for(size_t i=0;i<N;++i)((T*)c)[i]=((T*)b)[0]&((T*)a)[i];\
+    for(size_t i=0;i<N;++i)((Tc*)c)[i]=((Tb*)b)[0]&((Ta*)a)[i];\
   }\
 }
-#define EXPR_AN_BOR(T) {\
+#define EXPR_AN_BOR(Ta, Tb, Tc) {\
   if (array_first) {\
-    for(size_t i=0;i<N;++i)((T*)c)[i]=((T*)a)[i]|((T*)b)[0];\
+    for(size_t i=0;i<N;++i)((Tc*)c)[i]=((Ta*)a)[i]|((Tb*)b)[0];\
   } else {\
-    for(size_t i=0;i<N;++i)((T*)c)[i]=((T*)b)[0]|((T*)a)[i];\
+    for(size_t i=0;i<N;++i)((Tc*)c)[i]=((Tb*)b)[0]|((Ta*)a)[i];\
   }\
 }
-#define EXPR_AN_BXOR(T) {\
+#define EXPR_AN_BXOR(Ta, Tb, Tc) {\
   if (array_first) {\
-    for(size_t i=0;i<N;++i)((T*)c)[i]=((T*)a)[i]^((T*)b)[0];\
+    for(size_t i=0;i<N;++i)((Tc*)c)[i]=((Ta*)a)[i]^((Tb*)b)[0];\
   } else {\
-    for(size_t i=0;i<N;++i)((T*)c)[i]=((T*)b)[0]^((T*)a)[i];\
+    for(size_t i=0;i<N;++i)((Tc*)c)[i]=((Tb*)b)[0]^((Ta*)a)[i];\
   }\
 }
-#define EXPR_AN_SHL(T) {\
+#define EXPR_AN_SHL(Ta, Tb, Tc) {\
   if (array_first) {\
-    for(size_t i=0;i<N;++i)((T*)c)[i]=((T*)a)[i]<<((T*)b)[0];\
+    for(size_t i=0;i<N;++i)((Tc*)c)[i]=((Ta*)a)[i]<<((Tb*)b)[0];\
   } else {\
-    for(size_t i=0;i<N;++i)((T*)c)[i]=((T*)b)[0]<<((T*)a)[i];\
+    for(size_t i=0;i<N;++i)((Tc*)c)[i]=((Tb*)b)[0]<<((Ta*)a)[i];\
   }\
 }
-#define EXPR_AN_SHR(T) {\
+#define EXPR_AN_SHR(Ta, Tb, Tc) {\
   if (array_first) {\
-    for(size_t i=0;i<N;++i)((T*)c)[i]=((T*)a)[i]>>((T*)b)[0];\
+    for(size_t i=0;i<N;++i)((Tc*)c)[i]=((Ta*)a)[i]>>((Tb*)b)[0];\
   } else {\
-    for(size_t i=0;i<N;++i)((T*)c)[i]=((T*)b)[0]>>((T*)a)[i];\
+    for(size_t i=0;i<N;++i)((Tc*)c)[i]=((Tb*)b)[0]>>((Ta*)a)[i];\
   }\
 }
 
-#define EXPR_AA_ADD(T) {for(size_t i=0;i<N;++i)((T*)c)[i]=((T*)a)[i]+((T*)b)[i];}
-#define EXPR_AA_SUB(T) {for(size_t i=0;i<N;++i)((T*)c)[i]=((T*)a)[i]-((T*)b)[i];}
-#define EXPR_AA_MUL(T) {for(size_t i=0;i<N;++i)((T*)c)[i]=((T*)a)[i]*((T*)b)[i];}
-#define EXPR_AA_DIV(T) {for(size_t i=0;i<N;++i)((T*)c)[i]=((T*)a)[i]/((T*)b)[i];}
-#define EXPR_AA_IDIVF(T) {for(size_t i=0;i<N;++i)((T*)c)[i]=(T)floor(((T*)a)[i]/((T*)b)[i]);}
-#define EXPR_AA_MOD(T) {for(size_t i=0;i<N;++i)((T*)c)[i]=((T*)a)[i]%((T*)b)[i];}
-#define EXPR_AA_MODF(T) {for(size_t i=0;i<N;++i)((T*)c)[i]=((T*)a)[i]-(T)floor(((T*)a)[i]/((T*)b)[i])*((T*)b)[i];}
-#define EXPR_AA_POW(T) {for(size_t i=0;i<N;++i)((T*)c)[i]= pow(((T*)a)[i],((T*)b)[i]);}
-#define EXPR_AA_COW(T) {for(size_t i=0;i<N;++i)((T*)c)[i]=cpow(((T*)a)[i],((T*)b)[i]);}
-#define EXPR_AA_BAND(T) {for(size_t i=0;i<N;++i)((T*)c)[i]=((T*)a)[i]&((T*)b)[i];}
-#define EXPR_AA_BOR(T) {for(size_t i=0;i<N;++i)((T*)c)[i]=((T*)a)[i]|((T*)b)[i];}
-#define EXPR_AA_BXOR(T) {for(size_t i=0;i<N;++i)((T*)c)[i]=((T*)a)[i]^((T*)b)[i];}
-#define EXPR_AA_SHL(T) {for(size_t i=0;i<N;++i)((T*)c)[i]=((T*)a)[i]<<((T*)b)[i];}
-#define EXPR_AA_SHR(T) {for(size_t i=0;i<N;++i)((T*)c)[i]=((T*)a)[i]>>((T*)b)[i];}
-#define EXPR_ERR(T) {luaL_error(L, "Invalid operation");}
+#define EXPR_AA_ADD(Ta, Tb, Tc) {for(size_t i=0;i<N;++i)((Tc*)c)[i]=((Ta*)a)[i]+((Tb*)b)[i];}
+#define EXPR_AA_SUB(Ta, Tb, Tc) {for(size_t i=0;i<N;++i)((Tc*)c)[i]=((Ta*)a)[i]-((Tb*)b)[i];}
+#define EXPR_AA_MUL(Ta, Tb, Tc) {for(size_t i=0;i<N;++i)((Tc*)c)[i]=((Ta*)a)[i]*((Tb*)b)[i];}
+#define EXPR_AA_DIV(Ta, Tb, Tc) {for(size_t i=0;i<N;++i)((Tc*)c)[i]=((Ta*)a)[i]/((Tb*)b)[i];}
+#define EXPR_AA_IDIVF(Ta, Tb, Tc) {for(size_t i=0;i<N;++i)((Tc*)c)[i]=(Tc)floor(((Ta*)a)[i]/((Tb*)b)[i]);}
+#define EXPR_AA_MOD(Ta, Tb, Tc) {for(size_t i=0;i<N;++i)((Tc*)c)[i]=((Ta*)a)[i]%((Tb*)b)[i];}
+#define EXPR_AA_MODF(Ta, Tb, Tc) {for(size_t i=0;i<N;++i)((Tc*)c)[i]=((Ta*)a)[i]-(Tc)floor(((Ta*)a)[i]/((Tb*)b)[i])*((Tb*)b)[i];}
+#define EXPR_AA_POW(Ta, Tb, Tc) {for(size_t i=0;i<N;++i)((Tc*)c)[i]= pow(((Ta*)a)[i],((Tb*)b)[i]);}
+#define EXPR_AA_COW(Ta, Tb, Tc) {for(size_t i=0;i<N;++i)((Tc*)c)[i]=cpow(((Ta*)a)[i],((Tb*)b)[i]);}
+#define EXPR_AA_BAND(Ta, Tb, Tc) {for(size_t i=0;i<N;++i)((Tc*)c)[i]=((Ta*)a)[i]&((Tb*)b)[i];}
+#define EXPR_AA_BOR(Ta, Tb, Tc) {for(size_t i=0;i<N;++i)((Tc*)c)[i]=((Ta*)a)[i]|((Tb*)b)[i];}
+#define EXPR_AA_BXOR(Ta, Tb, Tc) {for(size_t i=0;i<N;++i)((Tc*)c)[i]=((Ta*)a)[i]^((Tb*)b)[i];}
+#define EXPR_AA_SHL(Ta, Tb, Tc) {for(size_t i=0;i<N;++i)((Tc*)c)[i]=((Ta*)a)[i]<<((Tb*)b)[i];}
+#define EXPR_AA_SHR(Ta, Tb, Tc) {for(size_t i=0;i<N;++i)((Tc*)c)[i]=((Ta*)a)[i]>>((Tb*)b)[i];}
+#define EXPR_ERR_BINARY(Ta, Tb, Tc) {luaL_error(L, "Invalid operation");}
 
-#define ARRAY_OP(op) \
-    switch (A->dtype) {\
-      case ARRAY_TYPE_BOOL    : op(Bool   ) ; break;\
-      case ARRAY_TYPE_CHAR    : op(char   ) ; break;\
-      case ARRAY_TYPE_SHORT   : op(short  ) ; break;\
-      case ARRAY_TYPE_INT     : op(int    ) ; break;\
-      case ARRAY_TYPE_LONG    : op(long   ) ; break;\
-      case ARRAY_TYPE_SIZE_T  : op(size_t ) ; break;\
-      case ARRAY_TYPE_FLOAT   : op(float  ) ; break;\
-      case ARRAY_TYPE_DOUBLE  : op(double ) ; break;\
-      case ARRAY_TYPE_COMPLEX : op(Complex) ; break;\
+#define GET_TC(op, Ta, Tb) {\
+  if (outA) {\
+    op(Ta, Tb, Ta)\
+  } else {\
+    op(Ta, Tb, Tb)\
+  }\
+}
+
+#define ARRAY_OP_BINARY_B(Ta, op, opf, opc) \
+    switch (TypeB) {\
+      case ARRAY_TYPE_BOOL    : GET_TC(op,  Ta, Bool   ) ; break;\
+      case ARRAY_TYPE_CHAR    : GET_TC(op,  Ta, char   ) ; break;\
+      case ARRAY_TYPE_SHORT   : GET_TC(op,  Ta, short  ) ; break;\
+      case ARRAY_TYPE_INT     : GET_TC(op,  Ta, int    ) ; break;\
+      case ARRAY_TYPE_LONG    : GET_TC(op,  Ta, long   ) ; break;\
+      case ARRAY_TYPE_SIZE_T  : GET_TC(op,  Ta, size_t ) ; break;\
+      case ARRAY_TYPE_FLOAT   : GET_TC(opf, Ta, float  ) ; break;\
+      case ARRAY_TYPE_DOUBLE  : GET_TC(opf, Ta, double ) ; break;\
+      case ARRAY_TYPE_COMPLEX : GET_TC(opc, Ta, Complex) ; break;\
     }
 
-#define ARRAY_OPC(op, opc) \
-    switch (A->dtype) {\
-      case ARRAY_TYPE_BOOL    : op(Bool   ) ; break;\
-      case ARRAY_TYPE_CHAR    : op(char   ) ; break;\
-      case ARRAY_TYPE_SHORT   : op(short  ) ; break;\
-      case ARRAY_TYPE_INT     : op(int    ) ; break;\
-      case ARRAY_TYPE_LONG    : op(long   ) ; break;\
-      case ARRAY_TYPE_SIZE_T  : op(size_t ) ; break;\
-      case ARRAY_TYPE_FLOAT   : op(float  ) ; break;\
-      case ARRAY_TYPE_DOUBLE  : op(double ) ; break;\
-      case ARRAY_TYPE_COMPLEX : opc(Complex) ; break;\
+#define ARRAY_OP_BINARY(op, opf, opc) \
+    switch (TypeA) {\
+      case ARRAY_TYPE_BOOL    : ARRAY_OP_BINARY_B(Bool,    op,  opf, opc) ; break;\
+      case ARRAY_TYPE_CHAR    : ARRAY_OP_BINARY_B(char,    op,  opf, opc) ; break;\
+      case ARRAY_TYPE_SHORT   : ARRAY_OP_BINARY_B(short,   op,  opf, opc) ; break;\
+      case ARRAY_TYPE_INT     : ARRAY_OP_BINARY_B(int,     op,  opf, opc) ; break;\
+      case ARRAY_TYPE_LONG    : ARRAY_OP_BINARY_B(long,    op,  opf, opc) ; break;\
+      case ARRAY_TYPE_SIZE_T  : ARRAY_OP_BINARY_B(size_t,  op,  opf, opc) ; break;\
+      case ARRAY_TYPE_FLOAT   : ARRAY_OP_BINARY_B(float,   opf, opf, opc) ; break;\
+      case ARRAY_TYPE_DOUBLE  : ARRAY_OP_BINARY_B(double,  opf, opf, opc) ; break;\
+      case ARRAY_TYPE_COMPLEX : ARRAY_OP_BINARY_B(Complex, opc, opc, opc) ; break;\
     }
 
-#define ARRAY_OPFC(op, opf, opc) \
-    switch (A->dtype) {\
-      case ARRAY_TYPE_BOOL    : op(Bool   ) ; break;\
-      case ARRAY_TYPE_CHAR    : op(char   ) ; break;\
-      case ARRAY_TYPE_SHORT   : op(short  ) ; break;\
-      case ARRAY_TYPE_INT     : op(int    ) ; break;\
-      case ARRAY_TYPE_LONG    : op(long   ) ; break;\
-      case ARRAY_TYPE_SIZE_T  : op(size_t ) ; break;\
-      case ARRAY_TYPE_FLOAT   : opf(float  ) ; break;\
-      case ARRAY_TYPE_DOUBLE  : opf(double ) ; break;\
-      case ARRAY_TYPE_COMPLEX : opc(Complex) ; break;\
+#define ARRAY_OP_UNARY(op, opf, opc) \
+    switch (TypeA) {\
+      case ARRAY_TYPE_BOOL    : op(Bool,     Bool   ) ; break;\
+      case ARRAY_TYPE_CHAR    : op(char,     char   ) ; break;\
+      case ARRAY_TYPE_SHORT   : op(short,    short  ) ; break;\
+      case ARRAY_TYPE_INT     : op(int,      int    ) ; break;\
+      case ARRAY_TYPE_LONG    : op(long,     long   ) ; break;\
+      case ARRAY_TYPE_SIZE_T  : op(size_t,   size_t ) ; break;\
+      case ARRAY_TYPE_FLOAT   : opf(float,   float  ) ; break;\
+      case ARRAY_TYPE_DOUBLE  : opf(double,  double ) ; break;\
+      case ARRAY_TYPE_COMPLEX : opc(Complex, Complex) ; break;\
     }
+
 
 #define EXPR_ASSIGN0(T,val) {for(size_t i=0;i<N;++i)((T*)a)[i]=val;}
 #define EXPR_ASSIGN1(T,val) {for(size_t i=0;i<N;++i)((T*)a)[i]=*((T*)val);}
@@ -282,7 +292,7 @@ int array_resize(Array *A, const size_t *N, int Nd)
   return 0;
 }
 
-
+/* Arrays A and B guaranteed to have same types */
 void array_unary_op(lua_State * L, const Array *A, Array *B, 
                     ArrayUnaryOperation op)
 {
@@ -290,16 +300,19 @@ void array_unary_op(lua_State * L, const Array *A, Array *B,
   const void  *restrict a = A->data;
   void        *restrict b = B->data;
 
+  const ArrayType TypeA = A->dtype;
+
   switch (op) {
   case ARRAY_OP_UNM:
-    ARRAY_OP(EXPR_UNM);
+    ARRAY_OP_UNARY(EXPR_UNM, EXPR_UNM, EXPR_UNM);
     break;
   case ARRAY_OP_BNOT:
-    ARRAY_OPFC(EXPR_BNOT, EXPR_ERR, EXPR_ERR);
+    ARRAY_OP_UNARY(EXPR_BNOT, EXPR_ERR_UNARY, EXPR_ERR_UNARY);
     break;
   }
 }
 
+/* Arrays A and B may have different types, C has higher of A and B types */
 void array_array_binary_op(lua_State * L, const Array *A, const Array *B,
                      Array *C, ArrayBinaryOperation op)
 {
@@ -308,46 +321,51 @@ void array_array_binary_op(lua_State * L, const Array *A, const Array *B,
   const void  *restrict b = B->data;
   void        *restrict c = C->data;
 
+  const ArrayType TypeA = A->dtype;
+  const ArrayType TypeB = B->dtype;
+  const Bool      outA  = TypeA == C->dtype;
+
   switch (op) {
     case ARRAY_OP_ADD:
-      ARRAY_OP(EXPR_AA_ADD);
+      ARRAY_OP_BINARY(EXPR_AA_ADD, EXPR_AA_ADD, EXPR_AA_ADD);
       break;
     case ARRAY_OP_SUB:
-      ARRAY_OP(EXPR_AA_SUB);
+      ARRAY_OP_BINARY(EXPR_AA_SUB, EXPR_AA_SUB, EXPR_AA_SUB);
       break;
     case ARRAY_OP_MUL:
-      ARRAY_OP(EXPR_AA_MUL);
+      ARRAY_OP_BINARY(EXPR_AA_MUL, EXPR_AA_MUL, EXPR_AA_MUL);
       break;
     case ARRAY_OP_DIV:
-      ARRAY_OP(EXPR_AA_DIV);
+      ARRAY_OP_BINARY(EXPR_AA_DIV, EXPR_AA_DIV, EXPR_AA_DIV);
       break;
     case ARRAY_OP_IDIV:
-      ARRAY_OPFC(EXPR_AA_DIV, EXPR_AA_IDIVF, EXPR_ERR);
+      ARRAY_OP_BINARY(EXPR_AA_DIV, EXPR_AA_IDIVF, EXPR_ERR_BINARY);
       break;
     case ARRAY_OP_MOD:
-      ARRAY_OPFC(EXPR_AA_MOD, EXPR_AA_MODF, EXPR_ERR);
+      ARRAY_OP_BINARY(EXPR_AA_MOD, EXPR_AA_MODF, EXPR_ERR_BINARY);
       break;
     case ARRAY_OP_POW:
-      ARRAY_OPC(EXPR_AA_POW, EXPR_AA_COW);
+      ARRAY_OP_BINARY(EXPR_AA_POW, EXPR_AA_POW, EXPR_AA_COW);
       break;
     case ARRAY_OP_BAND:
-      ARRAY_OPFC(EXPR_AA_BAND, EXPR_ERR, EXPR_ERR);
+      ARRAY_OP_BINARY(EXPR_AA_BAND, EXPR_ERR_BINARY, EXPR_ERR_BINARY);
       break;
     case ARRAY_OP_BOR:
-      ARRAY_OPFC(EXPR_AA_BOR, EXPR_ERR, EXPR_ERR);
+      ARRAY_OP_BINARY(EXPR_AA_BOR, EXPR_ERR_BINARY, EXPR_ERR_BINARY);
       break;
     case ARRAY_OP_BXOR:
-      ARRAY_OPFC(EXPR_AA_BXOR, EXPR_ERR, EXPR_ERR);
+      ARRAY_OP_BINARY(EXPR_AA_BXOR, EXPR_ERR_BINARY, EXPR_ERR_BINARY);
       break;
     case ARRAY_OP_SHL:
-      ARRAY_OPFC(EXPR_AA_SHL, EXPR_ERR, EXPR_ERR);
+      ARRAY_OP_BINARY(EXPR_AA_SHL, EXPR_ERR_BINARY, EXPR_ERR_BINARY);
       break;
     case ARRAY_OP_SHR:
-      ARRAY_OPFC(EXPR_AA_SHR, EXPR_ERR, EXPR_ERR);
+      ARRAY_OP_BINARY(EXPR_AA_SHR, EXPR_ERR_BINARY, EXPR_ERR_BINARY);
       break;
   }
 }
 
+/* Arrays A and B may have different types, C is the same type as B */
 void array_number_binary_op(lua_State * L, const Array *A, const void *B,
                      Array *C, ArrayBinaryOperation op, Bool array_first)
 {
@@ -356,42 +374,46 @@ void array_number_binary_op(lua_State * L, const Array *A, const void *B,
   const void  *restrict b = B;
   void        *restrict c = C->data;
 
+  const ArrayType TypeA = A->dtype;
+  const ArrayType TypeB = C->dtype;
+  const Bool      outA  = TypeA == C->dtype;
+
   switch (op) {
     case ARRAY_OP_ADD:
-      ARRAY_OP(EXPR_AN_ADD);
+      ARRAY_OP_BINARY(EXPR_AN_ADD, EXPR_AN_ADD, EXPR_AN_ADD);
       break;
     case ARRAY_OP_SUB:
-      ARRAY_OP(EXPR_AN_SUB);
+      ARRAY_OP_BINARY(EXPR_AN_SUB, EXPR_AN_SUB, EXPR_AN_SUB);
       break;
     case ARRAY_OP_MUL:
-      ARRAY_OP(EXPR_AN_MUL);
+      ARRAY_OP_BINARY(EXPR_AN_MUL, EXPR_AN_MUL, EXPR_AN_MUL);
       break;
     case ARRAY_OP_DIV:
-      ARRAY_OP(EXPR_AN_DIV);
+      ARRAY_OP_BINARY(EXPR_AN_DIV, EXPR_AN_DIV, EXPR_AN_DIV);
       break;
     case ARRAY_OP_IDIV:
-      ARRAY_OPFC(EXPR_AN_DIV, EXPR_AN_IDIVF, EXPR_ERR);
+      ARRAY_OP_BINARY(EXPR_AN_DIV, EXPR_AN_IDIVF, EXPR_ERR_BINARY);
       break;
     case ARRAY_OP_MOD:
-      ARRAY_OPFC(EXPR_AN_MOD, EXPR_AN_MODF, EXPR_ERR);
+      ARRAY_OP_BINARY(EXPR_AN_MOD, EXPR_AN_MODF, EXPR_ERR_BINARY);
       break;
     case ARRAY_OP_POW:
-      ARRAY_OPC(EXPR_AN_POW, EXPR_AN_COW);
+      ARRAY_OP_BINARY(EXPR_AN_POW, EXPR_AN_POW, EXPR_AN_COW);
       break;
     case ARRAY_OP_BAND:
-      ARRAY_OPFC(EXPR_AN_BAND, EXPR_ERR, EXPR_ERR);
+      ARRAY_OP_BINARY(EXPR_AN_BAND, EXPR_ERR_BINARY, EXPR_ERR_BINARY);
       break;
     case ARRAY_OP_BOR:
-      ARRAY_OPFC(EXPR_AN_BOR, EXPR_ERR, EXPR_ERR);
+      ARRAY_OP_BINARY(EXPR_AN_BOR, EXPR_ERR_BINARY, EXPR_ERR_BINARY);
       break;
     case ARRAY_OP_BXOR:
-      ARRAY_OPFC(EXPR_AN_BXOR, EXPR_ERR, EXPR_ERR);
+      ARRAY_OP_BINARY(EXPR_AN_BXOR, EXPR_ERR_BINARY, EXPR_ERR_BINARY);
       break;
     case ARRAY_OP_SHL:
-      ARRAY_OPFC(EXPR_AN_SHL, EXPR_ERR, EXPR_ERR);
+      ARRAY_OP_BINARY(EXPR_AN_SHL, EXPR_ERR_BINARY, EXPR_ERR_BINARY);
       break;
     case ARRAY_OP_SHR:
-      ARRAY_OPFC(EXPR_AN_SHR, EXPR_ERR, EXPR_ERR);
+      ARRAY_OP_BINARY(EXPR_AN_SHR, EXPR_ERR_BINARY, EXPR_ERR_BINARY);
       break;
   }
 }
@@ -486,13 +508,13 @@ void array_assign_from_array(Array *A, const Array *B)
   }\
 }
 
-#define TRANSPOSE(T) \
+#define TRANSPOSE(Ta, Tb) \
 {\
   while (indices[ndims-1] < shape[ndims-1])\
   {\
     POS_ROWMAJOR(rpos);\
     POS_COLMAJOR(cpos);\
-    ((T*)b)[cpos]=((T*)a)[rpos];\
+    ((Tb*)b)[cpos]=((Ta*)a)[rpos];\
     ADVANCE_INDICES();\
   }\
 }
@@ -510,12 +532,13 @@ void array_transpose(const Array *A, Array *B)
   }
 
   const size_t *restrict shape = A->shape;
+  const ArrayType        TypeA = A->dtype;
   size_t       *restrict indices = (size_t *) calloc(ndims, sizeof(size_t));
 
   size_t rpos = 0;
   size_t cpos = 0;
 
-  ARRAY_OP(TRANSPOSE);
+  ARRAY_OP_UNARY(TRANSPOSE, TRANSPOSE, TRANSPOSE);
 
   free(indices);
 }

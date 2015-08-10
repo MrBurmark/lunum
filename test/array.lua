@@ -5,15 +5,19 @@ local function test1()
    print('test1')
    local A = lunum.zeros(100)
 
+   print('Array metatable functions')
    for k,v in pairs(getmetatable(A)) do
       print (k,v)
    end
 
+   print('lunum functions')
    for k,v in pairs(lunum) do
       print (k,v)
    end
 
+   print('Array __len')
    print(getmetatable(A).__len)
+   print('Array __gc')
    print(getmetatable(A).__gc)
    print("length is", A:size())
 end

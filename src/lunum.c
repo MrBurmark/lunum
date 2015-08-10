@@ -415,7 +415,6 @@ static int _array_binary_op(lua_State *L, ArrayBinaryOperation op)
 static int _array_number_binary_op(lua_State *L, ArrayBinaryOperation op, Bool array_first)
 {
   const Array *A = array_first ? lunum_checkarray1(L, 1) : lunum_checkarray1(L, 2);
-  Array A_;
   ArrayType T = A->dtype;
 
   int num_pos = array_first ? 2 : 1;
@@ -447,7 +446,6 @@ static int _array_number_binary_op(lua_State *L, ArrayBinaryOperation op, Bool a
       case ARRAY_TYPE_DOUBLE  : num.d = (double)num.i;  break;
       case ARRAY_TYPE_COMPLEX : num.z = (Complex)num.i; break;
     }
-    A_ = *A;
   }
   else if (lua_isinteger(L, num_pos)) {
     num.li = lua_tointeger(L, num_pos);
@@ -464,11 +462,9 @@ static int _array_number_binary_op(lua_State *L, ArrayBinaryOperation op, Bool a
         case ARRAY_TYPE_DOUBLE  : num.d = (double)num.li;  break;
         case ARRAY_TYPE_COMPLEX : num.z = (Complex)num.li; break;
       }
-      A_ = *A;
     } else {
-      /* number has higher type, copy A to higher type */
+      /* number has higher type */
       T = ARRAY_TYPE_LONG;
-      A_ = array_new_copy(A, T);
     }
   }
   else if (lua_isnumber(L, num_pos)) {
@@ -486,17 +482,15 @@ static int _array_number_binary_op(lua_State *L, ArrayBinaryOperation op, Bool a
         case ARRAY_TYPE_DOUBLE  : num.d = (double)num.ln;  break;
         case ARRAY_TYPE_COMPLEX : num.z = (Complex)num.ln; break;
       }
-      A_ = *A;
     } else {
-      /* number has higher type, copy A to higher type */
+      /* number has higher type */
       T = ARRAY_TYPE_DOUBLE;
-      A_ = array_new_copy(A, T);
     }
   }
   else if (lunum_hasmetatable(L, num_pos, "complex")) {
-    /* number complex, copy A to complex if not already complex */
+    /* number complex */
     num.z = *((Complex*) lua_touserdata(L, num_pos));
-    A_ = (T == ARRAY_TYPE_COMPLEX) ? *A : array_new_copy(A, T = ARRAY_TYPE_COMPLEX);
+    T = ARRAY_TYPE_COMPLEX;
   } else {
     return luaL_error(L, "Invalid argument in Array binary op");
   }
@@ -505,19 +499,17 @@ static int _array_number_binary_op(lua_State *L, ArrayBinaryOperation op, Bool a
   array_resize(&C, A->shape, A->ndims);
   lunum_pusharray1(L, &C);
 
-  array_number_binary_op(L, &A_, (void *)&num, &C, op, array_first);
-
-  if (A->dtype != T) array_del(&A_);
+  array_number_binary_op(L, A, (void *)&num, &C, op, array_first);
 
   return 1;
 }
 
 static int _array_array_binary_op(lua_State *L, ArrayBinaryOperation op)
 {
-  Array *A = lunum_checkarray1(L, 1);
-  Array *B = lunum_checkarray1(L, 2);
+  const Array *A = lunum_checkarray1(L, 1);
+  const Array *B = lunum_checkarray1(L, 2);
 
-
+  /* check size and dimensions */
   if (A->ndims != B->ndims) {
     luaL_error(L, "arrays have different dimensions");
   }
@@ -527,19 +519,13 @@ static int _array_array_binary_op(lua_State *L, ArrayBinaryOperation op)
     }
   }
 
-  ArrayType T = (A->dtype >= B->dtype) ? A->dtype : B->dtype;
-
-  Array A_ = (A->dtype == T) ? *A : array_new_copy(A, T);
-  Array B_ = (B->dtype == T) ? *B : array_new_copy(B, T);
+  const ArrayType T = (A->dtype >= B->dtype) ? A->dtype : B->dtype;
 
   Array C = array_new_zeros(A->size, T);
   array_resize(&C, A->shape, A->ndims);
   lunum_pusharray1(L, &C);
 
-  array_array_binary_op(L, &A_, &B_, &C, op);
-
-  if (A->dtype != T) array_del(&A_);
-  if (B->dtype != T) array_del(&B_);
+  array_array_binary_op(L, A, B, &C, op);
 
   return 1;
 }
@@ -630,18 +616,18 @@ static int _complex_binary_op2(lua_State *L, ArrayBinaryOperation op)
   luaL_setmetatable(L, "complex");
 
   switch (op) {
-  case ARRAY_OP_ADD: *z = v + w; break;
-  case ARRAY_OP_SUB: *z = v - w; break;
-  case ARRAY_OP_MUL: *z = v * w; break;
-  case ARRAY_OP_DIV: *z = v / w; break;
-  case ARRAY_OP_POW: *z = cpow(v,w); break;
-  case ARRAY_OP_IDIV:
-  case ARRAY_OP_MOD:
-  case ARRAY_OP_BAND:
-  case ARRAY_OP_BOR:
-  case ARRAY_OP_BXOR:
-  case ARRAY_OP_SHL:
-  case ARRAY_OP_SHR: luaL_error(L, "Invalid operation"); break;
+    case ARRAY_OP_ADD: *z = v + w; break;
+    case ARRAY_OP_SUB: *z = v - w; break;
+    case ARRAY_OP_MUL: *z = v * w; break;
+    case ARRAY_OP_DIV: *z = v / w; break;
+    case ARRAY_OP_POW: *z = cpow(v,w); break;
+    case ARRAY_OP_IDIV:
+    case ARRAY_OP_MOD:
+    case ARRAY_OP_BAND:
+    case ARRAY_OP_BOR:
+    case ARRAY_OP_BXOR:
+    case ARRAY_OP_SHL:
+    case ARRAY_OP_SHR: luaL_error(L, "Invalid operation"); break;
   }
 
   return 1;
