@@ -3,11 +3,7 @@
 #ifndef __Array_HEADER__
 #define __Array_HEADER__
 
-#ifdef __cplusplus
-#include "lua.hpp"
-#else
 #include "lua.h"
-#endif
 #include "lualib.h"
 
 typedef      unsigned char Bool;
@@ -53,6 +49,8 @@ typedef struct {
 } Array;
 
 char      *array_typename(ArrayType T);
+double     array_typemin(ArrayType T);
+double     array_typemax(ArrayType T);
 ArrayType  array_typeflag(char c);
 Array      array_new_zeros(size_t N, ArrayType T);
 Array      array_new_copy(const Array *B, ArrayType T);

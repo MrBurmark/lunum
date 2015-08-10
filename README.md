@@ -182,10 +182,10 @@ Returns a deep-copy of the array.
 
 Same as lunum.resize(A, newshape). Changes the array `A` in-place.
 
-### array:transpose(newshape)
+### array:transpose()
 ***
 
-Same as lunum.transpose(A, newshape). Returns the transpose of array `A`.
+Same as lunum.transpose(A). Returns the transpose of array `A`.
 If `A` is 1-dimensional, returns a copy of `A`.
 
 ### array:reshape(newshape)

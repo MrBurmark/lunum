@@ -56,15 +56,15 @@ void lunum_astable(lua_State *L, int pos)
   lua_newtable(L);
   for (size_t i=0; i<A->size; ++i) {
 
-    lua_pushnumber(L, i+1);
+    lua_pushinteger(L, i+1);
 
     switch (A->dtype) {
     case ARRAY_TYPE_BOOL    : lua_pushboolean  (L, ((Bool    *)a)[i]); break;
-    case ARRAY_TYPE_CHAR    : lua_pushnumber   (L, ((char    *)a)[i]); break;
-    case ARRAY_TYPE_SHORT   : lua_pushnumber   (L, ((short   *)a)[i]); break;
-    case ARRAY_TYPE_INT     : lua_pushnumber   (L, ((int     *)a)[i]); break;
-    case ARRAY_TYPE_LONG    : lua_pushnumber   (L, ((long    *)a)[i]); break;
-    case ARRAY_TYPE_SIZE_T  : lua_pushnumber   (L, ((size_t  *)a)[i]); break;
+    case ARRAY_TYPE_CHAR    : lua_pushinteger  (L, ((char    *)a)[i]); break;
+    case ARRAY_TYPE_SHORT   : lua_pushinteger  (L, ((short   *)a)[i]); break;
+    case ARRAY_TYPE_INT     : lua_pushinteger  (L, ((int     *)a)[i]); break;
+    case ARRAY_TYPE_LONG    : lua_pushinteger  (L, ((long    *)a)[i]); break;
+    case ARRAY_TYPE_SIZE_T  : lua_pushinteger  (L, ((size_t  *)a)[i]); break;
     case ARRAY_TYPE_FLOAT   : lua_pushnumber   (L, ((float   *)a)[i]); break;
     case ARRAY_TYPE_DOUBLE  : lua_pushnumber   (L, ((double  *)a)[i]); break;
     case ARRAY_TYPE_COMPLEX : lunum_pushcomplex(L, ((Complex *)a)[i]); break;
@@ -130,7 +130,7 @@ int lunum_upcast(lua_State *L, int pos, ArrayType T, size_t N)
 
     for (size_t i=0; i<A.size; ++i) {
 
-      lua_pushnumber(L, i+1);
+      lua_pushinteger(L, i+1);
       lua_gettable(L, pos);
 
       void *val = lunum_tovalue(L, T);
@@ -202,8 +202,12 @@ void *lunum_tovalue(lua_State *L, ArrayType T)
 {
   Complex x=0.0;
 
-  if (lua_isnumber(L, -1)) {
-    x = lua_tonumber(L, -1);
+  int isnum;
+
+  if (x = lua_tointegerx(L, -1, &isnum), isnum) {
+    /* assignment done above */
+  } else if (x = lua_tonumberx(L, -1, &isnum), isnum) {
+    /* assignment done above */
   }
   else if (lua_isboolean(L, -1)) {
     x = lua_toboolean(L, -1);
@@ -218,15 +222,15 @@ void *lunum_tovalue(lua_State *L, ArrayType T)
   void *y = malloc(array_sizeof(T));
 
   switch (T) {
-  case ARRAY_TYPE_BOOL    : *((Bool   *)y) = x; break;
-  case ARRAY_TYPE_CHAR    : *((char   *)y) = x; break;
-  case ARRAY_TYPE_SHORT   : *((short  *)y) = x; break;
-  case ARRAY_TYPE_INT     : *((int    *)y) = x; break;
-  case ARRAY_TYPE_LONG    : *((long   *)y) = x; break;
-  case ARRAY_TYPE_SIZE_T  : *((size_t *)y) = x; break;
-  case ARRAY_TYPE_FLOAT   : *((float  *)y) = x; break;
-  case ARRAY_TYPE_DOUBLE  : *((double *)y) = x; break;
-  case ARRAY_TYPE_COMPLEX : *((Complex*)y) = x; break;
+    case ARRAY_TYPE_BOOL    : *((Bool   *)y) = x; break;
+    case ARRAY_TYPE_CHAR    : *((char   *)y) = x; break;
+    case ARRAY_TYPE_SHORT   : *((short  *)y) = x; break;
+    case ARRAY_TYPE_INT     : *((int    *)y) = x; break;
+    case ARRAY_TYPE_LONG    : *((long   *)y) = x; break;
+    case ARRAY_TYPE_SIZE_T  : *((size_t *)y) = x; break;
+    case ARRAY_TYPE_FLOAT   : *((float  *)y) = x; break;
+    case ARRAY_TYPE_DOUBLE  : *((double *)y) = x; break;
+    case ARRAY_TYPE_COMPLEX : *((Complex*)y) = x; break;
   }
 
   return y;

@@ -7,12 +7,13 @@
 
 
 static int luaC_array_dtype(lua_State *L);
+static int luaC_array_dtypemin(lua_State *L);
+static int luaC_array_dtypemax(lua_State *L);
 static int luaC_array_shape(lua_State *L);
 static int luaC_array_size(lua_State *L);
 static int luaC_array_astable(lua_State *L);
 static int luaC_array_astype(lua_State *L);
 static int luaC_array_tofile(lua_State *L);
-
 
 void _lunum_register_array(lua_State *L, Array *B)
 {
@@ -20,6 +21,12 @@ void _lunum_register_array(lua_State *L, Array *B)
 
   lua_pushcfunction(L, luaC_array_dtype);
   lua_setfield(L, -2, "dtype");
+
+  lua_pushcfunction(L, luaC_array_dtypemin);
+  lua_setfield(L, -2, "dtypemin");
+
+  lua_pushcfunction(L, luaC_array_dtypemax);
+  lua_setfield(L, -2, "dtypemax");
 
   lua_pushcfunction(L, luaC_array_shape);
   lua_setfield(L, -2, "shape");
@@ -82,6 +89,32 @@ int luaC_array_dtype(lua_State *L)
   }
 
   lua_pushstring(L, array_typename(A->dtype));
+  return 1;
+}
+
+int luaC_array_dtypemin(lua_State *L)
+// -----------------------------------------------------------------------------
+// If there is no argument, return a string description of the data type. If
+// the string 'enum' is given as the first argument, then return the enumated
+// value of the Array's type.
+// -----------------------------------------------------------------------------
+{
+  Array *A = lunum_checkarray1(L, 1);
+
+  lua_pushnumber(L, array_typemin(A->dtype));
+  return 1;
+}
+
+int luaC_array_dtypemax(lua_State *L)
+// -----------------------------------------------------------------------------
+// If there is no argument, return a string description of the data type. If
+// the string 'enum' is given as the first argument, then return the enumated
+// value of the Array's type.
+// -----------------------------------------------------------------------------
+{
+  Array *A = lunum_checkarray1(L, 1);
+
+  lua_pushnumber(L, array_typemax(A->dtype));
   return 1;
 }
 

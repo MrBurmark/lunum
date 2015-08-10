@@ -3,11 +3,7 @@
 #ifndef __NumluaCapi_HEADER__
 #define __NumluaCapi_HEADER__
 
-#ifdef __cplusplus
-#include "lua.hpp"
-#else
 #include "lua.h"
-#endif
 #include "lualib.h"
 #include "lauxlib.h"
 
@@ -26,13 +22,9 @@ int           lunum_hasmetatable(lua_State *L, int pos, const char *name);
 void         *lunum_tovalue(lua_State *L, ArrayType T);
 
 #ifndef LUNUM_API_NOCOMPLEX
-#ifdef __cplusplus
-#include <ccomplex>
-typedef std:complex<double> Complex;
-#else
+
 #include <complex.h>
 typedef double complex Complex;
-#endif
 
 Complex       lunum_checkcomplex(lua_State *L, int n);
 void          lunum_pushcomplex(lua_State *L, Complex z);

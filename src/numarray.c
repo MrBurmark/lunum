@@ -4,6 +4,9 @@
 #include <stdlib.h>
 #include <math.h>
 #include <complex.h>
+#include <limits.h>
+#include <float.h>
+
 #include "lunum.h"
 
 #define EXPR_UNM(Ta, Tb) {for(size_t i=0;i<N;++i)((Tb*)b)[i]=-((Ta*)a)[i];}
@@ -219,6 +222,38 @@ char *array_typename(ArrayType T)
   case ARRAY_TYPE_COMPLEX : return "complex";
   }
   return NULL; // indicates invalid type
+}
+
+double array_typemin(ArrayType T)
+{
+  switch (T) {
+  case ARRAY_TYPE_BOOL    : return 0;
+  case ARRAY_TYPE_CHAR    : return CHAR_MIN;
+  case ARRAY_TYPE_SHORT   : return SHRT_MIN;
+  case ARRAY_TYPE_INT     : return INT_MIN;
+  case ARRAY_TYPE_LONG    : return LONG_MIN;
+  case ARRAY_TYPE_SIZE_T  : return 0;
+  case ARRAY_TYPE_FLOAT   : return FLT_MIN;
+  case ARRAY_TYPE_DOUBLE  : return DBL_MIN;
+  case ARRAY_TYPE_COMPLEX : return DBL_MIN;
+  }
+  return -1; // indicates invalid type
+}
+
+double array_typemax(ArrayType T)
+{
+  switch (T) {
+  case ARRAY_TYPE_BOOL    : return 1;
+  case ARRAY_TYPE_CHAR    : return CHAR_MAX;
+  case ARRAY_TYPE_SHORT   : return SHRT_MAX;
+  case ARRAY_TYPE_INT     : return INT_MAX;
+  case ARRAY_TYPE_LONG    : return LONG_MAX;
+  case ARRAY_TYPE_SIZE_T  : return SIZE_MAX;
+  case ARRAY_TYPE_FLOAT   : return FLT_MAX;
+  case ARRAY_TYPE_DOUBLE  : return DBL_MAX;
+  case ARRAY_TYPE_COMPLEX : return DBL_MAX;
+  }
+  return -1; // indicates invalid type
 }
 
 ArrayType array_typeflag(char c)
@@ -510,12 +545,14 @@ void array_assign_from_array(Array *A, const Array *B)
 
 #define TRANSPOSE(Ta, Tb) \
 {\
+  cpos = 0;\
   while (indices[ndims-1] < shape[ndims-1])\
   {\
     POS_ROWMAJOR(rpos);\
-    POS_COLMAJOR(cpos);\
+    /* POS_COLMAJOR(cpos); sequential */\
     ((Tb*)b)[cpos]=((Ta*)a)[rpos];\
     ADVANCE_INDICES();\
+    ++cpos;\
   }\
 }
 

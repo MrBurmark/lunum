@@ -1,113 +1,527 @@
 
 require 'lunum'
 
+-- test helper routines
+
+-- checks if every value in a table is true
+local function check_table_true(t)
+   for k,v in pairs(t) do
+      if (v ~= true) then
+         print('value not true in tablecheck', k, v)
+      end
+      assert(v == true)
+   end
+end
+
+local function raw_pairs(t)
+   return next, t, nil
+end
+
+-- returns the higher typed of A, B
+local function higher_typed(A, B)
+   if (lunum[A:dtype()] >= lunum[B:dtype()]) then
+      return A
+   else
+      return B
+   end
+end
+-- returns the type max of the higher type of A, B
+local function type_max(A, B)
+   return higher_typed(A, B):dtypemax()
+end
+-- returns the type min of the higher type of A, B
+local function type_min(A, B)
+   return higher_typed(A, B):dtypemin()
+end
+-- returns true if lout is not representable in the higher typed of A, B
+local function under_over_flow(A, B, lout)
+   if type(A) == 'table' and type(B) == 'table' then
+      return (lout > type_max(A, B)) or (lout < type_min(A, B))
+   elseif type(A) == 'table' then
+      return (lout > A:dtypemax()) or (lout < A:dtypemin())
+   elseif type(B) == 'table' then
+      return (lout > B:dtypemax()) or (lout < B:dtypemin())
+   else
+      return false
+   end
+end
+-- returns true if both args are nan
+local function both_nan(a, b)
+   return (a ~= a) and (b ~= b)
+end
+
+local function int_typed(...)
+   local ints = true
+   for _,v in pairs({...}) do
+      if type(v) == 'table' then
+         ints = ints and lunum[v:dtype()] <= lunum.size_t
+      else
+         ints = ints and math.tointeger(v)
+      end
+   end
+   return ints
+end
+
+-- tests for binary operations and unary operations
+-- take a test name, index into the array being tested, Arrays, the array result at i and the lua restult at i
+-- doesn't print failure if overflow or underflow
+local function test_binary_op(name, i, A, B, aout, lout)
+   if int_typed(A, B) then
+      lout = lout >= 0 and math.floor(lout) or math.ceil(lout)
+   end
+   if (aout[i] ~= lout and not under_over_flow(A, B, lout) and not both_nan(aout[i], lout)) then
+      if type(A) == 'table' and type(B) == 'table' then
+         print('binary op failed', name, i, A:dtype(), B:dtype(), A[i], B[i], aout:dtype(), aout[i], '~=', lout)
+      elseif type(A) == 'table' then
+         print('binary op failed', name, i, A:dtype(), B, A[i], B, aout:dtype(), aout[i], '~=', lout)
+      elseif type(B) == 'table' then
+         print('binary op failed', name, i, A, B:dtype(), A, B[i], aout:dtype(), aout[i], '~=', lout)
+      else
+         print('binary op failed', name, i, A, B, A, B, aout, '~=', lout)
+      end
+   end
+end
+local function test_unary_op(name, i, A, aout, lout)
+   if (aout[i] ~= lout and not both_nan(aout[i], lout)) then
+      print('unary op failed', name, i, A:dtype(), A[i], aout:dtype(), aout[i], '~=', lout)
+   end
+end
+
+-- tests that all the functions and constants are in the array metatable and the lunum table
 local function test1()
    print('test1')
    local A = lunum.zeros(100)
 
-   print('Array metatable functions')
+   -- check array object table
+   local expected_arrayfunctions = {max=false, imag=false, shape=false, eq=false, min=false,
+                                    copy=false, real=false, astable=false, indices=false, ne=false,
+                                    resize=false, size=false, setasflat=false, dtype=false, reshape=false,
+                                    gt=false, ge=false, le=false, tofile=false, astype=false, conj=false,
+                                    lt=false, dtypemin=false, dtypemax=false}
+
+   local expected_arrayuserdata = {__cstruct=false, __buffer=false}
+
+   for k,v in raw_pairs(A) do
+      if (expected_arrayfunctions[k] == false) then
+         assert(type(v) == 'function')
+         expected_arrayfunctions[k] = true
+      elseif (expected_arrayuserdata[k] == false) then
+         assert(type(v) == 'userdata')
+         expected_arrayuserdata[k] = true
+      else
+         print('Unknown pair in array', k, v)
+         assert(false)
+      end
+   end
+
+   check_table_true(expected_arrayfunctions)
+   check_table_true(expected_arrayuserdata)
+
+   -- check array object metatable
+   local expected_metafunctions = {__gc=false, __div=false, __index=false, __band=false, __add=false,
+                                    __mod=false, __sub=false, __call=false, __unm=false, __pow=false,
+                                    __mul=false, __shl=false, __bxor=false, __idiv=false, __bor=false,
+                                    __bnot=false, __newindex=false, __tostring=false, __shr=false}
+
+   local expected_metastrings = {__name=false}
+
    for k,v in pairs(getmetatable(A)) do
-      print (k,v)
+      if (expected_metafunctions[k] == false) then
+         assert(type(v) == 'function')
+         expected_metafunctions[k] = true
+      elseif (expected_metastrings[k] == false) then
+         assert(type(v) == 'string')
+         expected_metastrings[k] = true
+      else
+         print('Unknown pair in array metatable', k, v)
+         assert(false)
+      end
    end
 
-   print('lunum functions')
+   check_table_true(expected_metafunctions)
+   check_table_true(expected_metastrings)
+
+   -- check lunum table
+   local expected_functions = {tanh=false, atanh=false, __register_array=false, sinh=false, 
+                              asin=false, __build_slice=false, acosh=false, zeros=false, 
+                              conjugate=false, array=false, resize=false, sin=false, cos=false,
+                              fromfile=false, exp=false, log=false, log10=false, range=false,
+                              asinh=false, apply=false, slice=false, cosh=false, acos=false,
+                              transpose=false, atan=false, tan=false, loadtxt=false}
+
+   local expected_numbers = {char=false, short=false, double=false, long=false, int=false, 
+                              complex=false, size_t=false, float=false, bool=false}
+
+   local expected_userdata = {I=false}
+
    for k,v in pairs(lunum) do
-      print (k,v)
+      if (expected_functions[k] == false) then
+         assert(type(v) == 'function')
+         expected_functions[k] = true
+      elseif (expected_numbers[k] == false) then
+         assert(type(v) == 'number')
+         expected_numbers[k] = true
+      elseif (expected_userdata[k] == false) then
+         assert(type(v) == 'userdata')
+         expected_userdata[k] = true
+      else
+         print('Unknown pair in lunum', k, v)
+         assert(false)
+      end
    end
 
-   print('Array __len')
-   print(getmetatable(A).__len)
-   print('Array __gc')
-   print(getmetatable(A).__gc)
-   print("length is", A:size())
+   check_table_true(expected_functions)
+   check_table_true(expected_numbers)
+   check_table_true(expected_userdata)
+
+   assert(A:size() == 100)
 end
 
+-- checks if array creation from tables works, simple assignment works
 local function test2()
    print('test2')
-   local A = lunum.array({0,1,2,3,4,5,6,7,8,9})
+   local t = {0,1,2,3,4,5,6,7,8,9}
+   local A = lunum.array(t)
+   for k,v in pairs(t) do
+      if (A[k-1] ~= t[k]) then
+         print('creation from array failed at', k, A[k-1], "~=", t[k])
+      end
+      assert(A[k-1] == t[k])
+   end
    A[4] = 4.5
-   print(A[4])
+   assert(A[4] == 4.5)
 end
 
+-- check basic array array operators
 local function test3()
    print('test3')
    local A = lunum.array({0,1,2,3,4,5,6,7,8,9})
    local B = lunum.array({9,8,7,6,5,4,3,2,1,0})
-   print("(A + B)[3] = ", (A + B)[2])
-   print("(A - B)[3] = ", (A - B)[2])
-   print("(A * B)[3] = ", (A * B)[2])
-   print("(A / B)[3] = ", (A / B)[2])
+
+   for i = 0,A:size()-1 do
+      test_binary_op('+', i, A, B, (A + B), A[i] + B[i])
+   end
+   for i = 0,A:size()-1 do
+      test_binary_op('-', i, A, B, (A - B), A[i] - B[i])
+   end
+   for i = 0,A:size()-1 do
+      test_binary_op('*', i, A, B, (A * B), A[i] * B[i])
+   end
+   for i = 0,A:size()-1 do
+      test_binary_op('/', i, A, B, (A / B), A[i] / B[i])
+   end
+   for i = 0,A:size()-1 do
+      test_binary_op('//', i, A, B, (A // B), A[i] // B[i])
+   end
+   for i = 0,A:size()-1 do
+      -- some results nan
+      test_binary_op('%', i, A, B, (A % B), A[i] % B[i])
+   end
+   for i = 0,A:size()-1 do
+      test_binary_op('^', i, A, B, (A ^ B), A[i] ^ B[i])
+   end
+
+   for i = 0,A:size()-1 do
+      test_unary_op('-', i, A, (-A), -A[i])
+   end
+
+   A = A:astype(lunum.long)
+   B = A:astype(lunum.long)
+
+   for i = 0,A:size()-1 do
+      test_binary_op('&', i, A, B, (A & B), A[i] & B[i])
+   end
+   for i = 0,A:size()-1 do
+      test_binary_op('|', i, A, B, (A | B), A[i] | B[i])
+   end
+   for i = 0,A:size()-1 do
+      test_binary_op('~', i, A, B, (A ~ B), A[i] ~ B[i])
+   end
+   for i = 0,A:size()-1 do
+      test_binary_op('<<', i, A, B, (A << B), A[i] << B[i])
+   end
+   for i = 0,A:size()-1 do
+      test_binary_op('>>', i, A, B, (A >> B), A[i] >> B[i])
+   end
+
+   for i = 0,A:size()-1 do
+      test_unary_op('~', i, A, (~A), ~A[i])
+   end
 end
 
+-- test operations on arrays of different types
 local function test4()
    print('test4')
-   local A = lunum.array({0,1,2,3,4,5,6,7,8,9}, lunum.float)
-   local B = lunum.array({0,1,2,3,4,5,6,7,8,9}, lunum.double)
-   print("(A + B)[3] = ", (A + B)[2])
+   -- no testing with booleans as lua doesn't allow boolean arithmetic
+   -- tests use -5 to -1, 1 to 8 to avoid division by 0, loss of float precision
+   local t = {
+      lunum.array({1,2,3,4,5,6,7,8}, lunum.char),
+      lunum.array({1,2,3,4,5,6,7,8}, lunum.short),
+      lunum.array({1,2,3,4,5,6,7,8}, lunum.int),
+      lunum.array({1,2,3,4,5,6,7,8}, lunum.long),
+      lunum.array({1,2,3,4,5,6,7,8}, lunum.size_t)
+   }
+
+   -- integer only tests
+   for i = 1,#t do
+      for j = 1,#t do
+         for k = 0,t[i]:size()-1 do
+            test_binary_op('&', k, t[i], t[j], (t[i] & t[j]), t[i][k] & t[j][k])
+         end
+         for k = 0,t[i]:size()-1 do
+            test_binary_op('|', k, t[i], t[j], (t[i] | t[j]), t[i][k] | t[j][k])
+         end
+         for k = 0,t[i]:size()-1 do
+            test_binary_op('~', k, t[i], t[j], (t[i] ~ t[j]), t[i][k] ~ t[j][k])
+         end
+         for k = 0,t[i]:size()-1 do
+            test_binary_op('<<', k, t[i], t[j], (t[i] << t[j]), t[i][k] << t[j][k])
+         end
+         for k = 0,t[i]:size()-1 do
+            test_binary_op('>>', k, t[i], t[j], (t[i] >> t[j]), t[i][k] >> t[j][k])
+         end
+      end
+   end
+
+   t[#t+1] = lunum.array({1,2,3,4,5,6,7,8}, lunum.float)
+   t[#t+1] = lunum.array({1,2,3,4,5,6,7,8}, lunum.double)
+
+   -- real only tests
+   for i = 1,#t do
+      for j = 1,#t do
+         for k = 0,t[i]:size()-1 do
+            test_binary_op('//', k, t[i], t[j], (t[i] // t[j]), t[i][k] // t[j][k])
+         end
+         for k = 0,t[i]:size()-1 do
+            test_binary_op('%', k, t[i], t[j], (t[i] % t[j]), t[i][k] % t[j][k])
+         end
+      end
+   end
+
+   local t = {
+      lunum.array({-5,-4,-3,-2,-1,1,2,3,4,5,6,7,8}, lunum.char),
+      lunum.array({-5,-4,-3,-2,-1,1,2,3,4,5,6,7,8}, lunum.short),
+      lunum.array({-5,-4,-3,-2,-1,1,2,3,4,5,6,7,8}, lunum.int),
+      lunum.array({-5,-4,-3,-2,-1,1,2,3,4,5,6,7,8}, lunum.long),
+      lunum.array({ 1, 1, 1, 1, 1,1,2,3,4,5,6,7,8}, lunum.size_t),
+      lunum.array({-5,-4,-3,-2,-1,1,2,3,4,5,6,7,8}, lunum.float),
+      lunum.array({-5,-4,-3,-2,-1,1,2,3,4,5,6,7,8}, lunum.double),
+      lunum.array({-5,-4,-3,-2,-1,1,2,3,4,5,6,7,8}, lunum.complex)
+   }
+
+   -- real and complex tests
+   for i = 1,#t do
+      for j = 1,#t do
+         for k = 0,t[i]:size()-1 do
+            test_binary_op('+', k, t[i], t[j], (t[i] + t[j]), t[i][k] + t[j][k])
+         end
+         for k = 0,t[i]:size()-1 do
+            test_binary_op('-', k, t[i], t[j], (t[i] - t[j]), t[i][k] - t[j][k])
+         end
+         for k = 0,t[i]:size()-1 do
+            test_binary_op('*', k, t[i], t[j], (t[i] * t[j]), t[i][k] * t[j][k])
+         end
+         for k = 0,t[i]:size()-1 do
+            test_binary_op('/', k, t[i], t[j], (t[i] / t[j]), t[i][k] / t[j][k])
+         end
+         for k = 0,t[i]:size()-1 do
+            test_binary_op('^', k, t[i], t[j], (t[i] ^ t[j]), t[i][k] ^ t[j][k])
+         end
+      end
+   end
 end
 
+-- test operations with array and constant
 local function test5()
    print('test5')
-   print("[char]    A*10 = ", lunum.array({0,1,2,3,4,5,6,7,8,9}, lunum.char) * 10)
-   print("[float]   A    = ", lunum.array({0,1,2,3,4,5,6,7,8,9}, lunum.float))
-   print("[complex] A    = ", lunum.array({0,1,2,3,4,5,6,7,8,9}, lunum.complex))
+   -- no testing with booleans as lua doesn't allow boolean arithmetic
+   -- tests use -5 to -1, 1 to 8 to avoid division by 0, loss of float precision
+   local t = {
+      lunum.array({1,2,3,4,5,6,7,8}, lunum.char),
+      lunum.array({1,2,3,4,5,6,7,8}, lunum.short),
+      lunum.array({1,2,3,4,5,6,7,8}, lunum.int),
+      lunum.array({1,2,3,4,5,6,7,8}, lunum.long),
+      lunum.array({1,2,3,4,5,6,7,8}, lunum.size_t)
+   }
+
+   -- integer only tests
+   for i = 1,#t do
+      for j = 1,#t do
+         for k = 0,t[i]:size()-1 do
+            test_binary_op('&', k, t[i], t[j][k], (t[i] & t[j][k]), t[i][k] & t[j][k])
+         end
+         for k = 0,t[i]:size()-1 do
+            test_binary_op('|', k, t[i], t[j][k], (t[i] | t[j][k]), t[i][k] | t[j][k])
+         end
+         for k = 0,t[i]:size()-1 do
+            test_binary_op('~', k, t[i], t[j][k], (t[i] ~ t[j][k]), t[i][k] ~ t[j][k])
+         end
+         for k = 0,t[i]:size()-1 do
+            test_binary_op('<<', k, t[i], t[j][k], (t[i] << t[j][k]), t[i][k] << t[j][k])
+         end
+         for k = 0,t[i]:size()-1 do
+            test_binary_op('>>', k, t[i], t[j][k], (t[i] >> t[j][k]), t[i][k] >> t[j][k])
+         end
+         for k = 0,t[i]:size()-1 do
+            test_binary_op('&', k, t[i][k], t[j], (t[i][k] & t[j]), t[i][k] & t[j][k])
+         end
+         for k = 0,t[i]:size()-1 do
+            test_binary_op('|', k, t[i][k], t[j], (t[i][k] | t[j]), t[i][k] | t[j][k])
+         end
+         for k = 0,t[i]:size()-1 do
+            test_binary_op('~', k, t[i][k], t[j], (t[i][k] ~ t[j]), t[i][k] ~ t[j][k])
+         end
+         for k = 0,t[i]:size()-1 do
+            test_binary_op('<<', k, t[i][k], t[j], (t[i][k] << t[j]), t[i][k] << t[j][k])
+         end
+         for k = 0,t[i]:size()-1 do
+            test_binary_op('>>', k, t[i][k], t[j], (t[i][k] >> t[j]), t[i][k] >> t[j][k])
+         end
+      end
+   end
+
+   t[#t+1] = lunum.array({1,2,3,4,5,6,7,8}, lunum.float)
+   t[#t+1] = lunum.array({1,2,3,4,5,6,7,8}, lunum.double)
+
+   -- real only tests
+   for i = 1,#t do
+      for j = 1,#t do
+         for k = 0,t[i]:size()-1 do
+            test_binary_op('//', k, t[i], t[j][k], (t[i] // t[j][k]), t[i][k] // t[j][k])
+         end
+         for k = 0,t[i]:size()-1 do
+            test_binary_op('%', k, t[i], t[j][k], (t[i] % t[j][k]), t[i][k] % t[j][k])
+         end
+         for k = 0,t[i]:size()-1 do
+            test_binary_op('//', k, t[i][k], t[j], (t[i][k] // t[j]), t[i][k] // t[j][k])
+         end
+         for k = 0,t[i]:size()-1 do
+            test_binary_op('%', k, t[i][k], t[j], (t[i][k] % t[j]), t[i][k] % t[j][k])
+         end
+      end
+   end
+
+   local t = {
+      lunum.array({-5,-4,-3,-2,-1,1,2,3,4,5,6,7,8}, lunum.char),
+      lunum.array({-5,-4,-3,-2,-1,1,2,3,4,5,6,7,8}, lunum.short),
+      lunum.array({-5,-4,-3,-2,-1,1,2,3,4,5,6,7,8}, lunum.int),
+      lunum.array({-5,-4,-3,-2,-1,1,2,3,4,5,6,7,8}, lunum.long),
+      lunum.array({ 1, 1, 1, 1, 1,1,2,3,4,5,6,7,8}, lunum.size_t),
+      lunum.array({-5,-4,-3,-2,-1,1,2,3,4,5,6,7,8}, lunum.float),
+      lunum.array({-5,-4,-3,-2,-1,1,2,3,4,5,6,7,8}, lunum.double),
+      lunum.array({-5,-4,-3,-2,-1,1,2,3,4,5,6,7,8}, lunum.complex)
+   }
+
+   -- real and complex tests
+   for i = 1,#t do
+      for j = 1,#t do
+         for k = 0,t[i]:size()-1 do
+            test_binary_op('+', k, t[i], t[j][k], (t[i] + t[j][k]), t[i][k] + t[j][k])
+         end
+         for k = 0,t[i]:size()-1 do
+            test_binary_op('-', k, t[i], t[j][k], (t[i] - t[j][k]), t[i][k] - t[j][k])
+         end
+         for k = 0,t[i]:size()-1 do
+            test_binary_op('*', k, t[i], t[j][k], (t[i] * t[j][k]), t[i][k] * t[j][k])
+         end
+         for k = 0,t[i]:size()-1 do
+            test_binary_op('/', k, t[i], t[j][k], (t[i] / t[j][k]), t[i][k] / t[j][k])
+         end
+         for k = 0,t[i]:size()-1 do
+            test_binary_op('^', k, t[i], t[j][k], (t[i] ^ t[j][k]), t[i][k] ^ t[j][k])
+         end
+         for k = 0,t[i]:size()-1 do
+            test_binary_op('+', k, t[i][k], t[j], (t[i][k] + t[j]), t[i][k] + t[j][k])
+         end
+         for k = 0,t[i]:size()-1 do
+            test_binary_op('-', k, t[i][k], t[j], (t[i][k] - t[j]), t[i][k] - t[j][k])
+         end
+         for k = 0,t[i]:size()-1 do
+            test_binary_op('*', k, t[i][k], t[j], (t[i][k] * t[j]), t[i][k] * t[j][k])
+         end
+         for k = 0,t[i]:size()-1 do
+            test_binary_op('/', k, t[i][k], t[j], (t[i][k] / t[j]), t[i][k] / t[j][k])
+         end
+         for k = 0,t[i]:size()-1 do
+            test_binary_op('^', k, t[i][k], t[j], (t[i][k] ^ t[j]), t[i][k] ^ t[j][k])
+         end
+      end
+   end
 end
 
+-- test complex assignment
 local function test6()
    print('test6')
    local I = lunum.I
    local A = lunum.zeros(109, lunum.complex)
    A[4] = 1
    A[5] = I
-   print(A[4], A[5])
-   print(A)
+   assert(A[4] == 1+0*I)
+   assert(A[5] == I)
 end
 
+-- test other math functions
 local function test7()
    print('test7')
    local I = lunum.I
    local A = lunum.array({1,2,3})
-   print(lunum.sin(A))
-   print(lunum.sin(A + I))
-   print(lunum.cos(A + I))
-   print(lunum.log(A + I))
-   print(lunum.atanh(A + I))
+
+   for i = 0,A:size()-1 do
+      test_unary_op('sin', i, A, lunum.sin(A), math.sin(A[i]))
+   end
+   for i = 0,A:size()-1 do
+      test_unary_op('cos', i, A, lunum.cos(A), math.cos(A[i]))
+   end
+   for i = 0,A:size()-1 do
+      test_unary_op('log', i, A, lunum.log(A), math.log(A[i]))
+   end
+   for i = 0,A:size()-1 do
+      test_unary_op('atan', i, A, lunum.atan(A), math.atan(A[i]))
+   end
 end
 
+-- test resizing
 local function test8()
    print('test8')
    local A = lunum.array({1,2,3,4,5,6,7,8})
-   lunum.resize(A, {4,2})
-   print(table.unpack(A:shape()))
-   print("A(0,0) = ", A(0,0))
-   print("A(0,1) = ", A(0,1))
-   print("A(1,0) = ", A(1,0))
-   print("A(1,1) = ", A(1,1))
-   print("A(2,0) = ", A(2,0))
-   print("A(2,1) = ", A(2,1))
-   print("A(3,0) = ", A(3,0))
-   print("A(3,1) = ", A(3,1))
+   local B = A:copy()
+   lunum.resize(B, {4,2})
+   local i = 0
+   for I in B:indices('table') do
+      assert(B[I] == A[i])
+      i = i + 1
+   end
+   lunum.resize(B, {2,4})
+   local i = 0
+   for I in B:indices('table') do
+      assert(B[I] == A[i])
+      i = i + 1
+   end
 end
 
-
+-- test indices iterators
 local function test9()
    print('test9')
-   local B = lunum.array({1,2,3,4,5,6,7,8,9,10,11,12})
+   local A = lunum.array({1,2,3,4,5,6,7,8,9,10,11,12})
+   B = A:copy()
    lunum.resize(B, {2,1,3,2})
 
-   for i,j,k,m in B:indices() do
-      print(string.format("B(%d,%d,%d,%d) = %f", i,j,k,m, B(i,j,k,m)))
+   local x = 0
+   for i,j,k,l in B:indices() do
+      assert(B(i,j,k,l) == A[x])
+      x = x + 1
    end
 
+   local i = 0
    for I in B:indices('table') do
-      print(string.format("B(%d,%d,%d,%d) = %f", I[1],I[2],I[3],I[4], B[I]))
+      assert(B[I] == A[i])
+      i = i + 1
    end
 end
 
-
+-- test apply, resize
 local function test10()
    print('test10')
-   print("testing apply function, and resize function")
 
    local B = lunum.range(100)
    local C = lunum.apply(function(x,y,z) return x+y+z end, B, B, B)
@@ -119,40 +533,107 @@ local function test10()
    C[{1,1}] = lunum.I
 
    local D = lunum.apply(function(x,y) return x+y end, B, C)
-   print("return array has type", D:dtype())
+   assert(D:dtype() == 'complex')
 
    local C = lunum.zeros({4,4}, lunum.complex)
-   print(C)
-   print(C:shape('array'))
+   assert(C:shape('array')[0] == 4)
+   assert(C:shape('array')[1] == 4)
 
    lunum.resize(C, {4,4})
-   print(C:shape('array'))
+   assert(C:shape('array')[0] == 4)
+   assert(C:shape('array')[1] == 4)
 end
 
-
+-- test bool arrays and logical operations
 local function test11()
    print('test11')
    local C = lunum.array({0,1,true,false}, lunum.bool)
-   print("{0,1,true,false} = ", C)
+   assert(C[0] == false)
+   assert(C[1] == true)
+   assert(C[2] == true)
+   assert(C[3] == false)
 
    local A = lunum.array({1,2,3})
    local B = lunum.array({3,2,1})
-   print("A = ", A, "B = ", B)
-   print("A == B ? ", A:eq(B))
-   print("A ~= B ? ", A:ne(B))
-   print("A <  B ? ", A:lt(B))
-   print("A <= B ? ", A:le(B))
-   print("A >  B ? ", A:gt(B))
-   print("A >= B ? ", A:ge(B))
+
+   local t = A:eq(B)
+   assert(t[0] == false)
+   assert(t[1] == true)
+   assert(t[2] == false)
+
+   local t = A:ne(B)
+   assert(t[0] == true)
+   assert(t[1] == false)
+   assert(t[2] == true)
+
+   local t = A:lt(B)
+   assert(t[0] == true)
+   assert(t[1] == false)
+   assert(t[2] == false)
+
+   local t = A:le(B)
+   assert(t[0] == true)
+   assert(t[1] == true)
+   assert(t[2] == false)
+
+   local t = A:gt(B)
+   assert(t[0] == false)
+   assert(t[1] == false)
+   assert(t[2] == true)
+
+   local t = A:ge(B)
+   assert(t[0] == false)
+   assert(t[1] == true)
+   assert(t[2] == true)
 end
 
+-- test type flags
 local function test12()
    print('test12')
-   print "testing type flags"
+   local I = lunum.I
    local C = lunum.array({1,2,3}, 'd')
-   print("double  ?= ", C:dtype())
-   print("complex ?= ", C:astype('z'):dtype())
-   print("[ 1+0j, 2+0j, 3+0j ] ?= ", C:astype('z'))
+
+   assert(C:dtype() == 'double')
+   local z = C:astype('z')
+   assert(z:dtype() == 'complex')
+   assert(z[0] == 1 + 0*I)
+   assert(z[1] == 2 + 0*I)
+   assert(z[2] == 3 + 0*I)
+end
+
+-- test transpose
+local function test13()
+   print('test13')
+   local A = lunum.range(12)
+   local B = lunum.transpose(A)
+
+   for i in A:indices() do
+      assert(A[i] == B[i])
+   end
+
+   lunum.resize(A, {3,4})
+   local B = lunum.transpose(A)
+   for i,j in A:indices() do
+      assert(A(i,j) == B(j,i))
+   end
+
+   lunum.resize(A, {2,3,2})
+   local B = lunum.transpose(A)
+   for i,j,k in A:indices() do
+      assert(A(i,j,k) == B(k,j,i))
+   end
+
+   lunum.resize(A, {3,2,2})
+   local B = lunum.transpose(A)
+   for i,j,k in A:indices() do
+      assert(A(i,j,k) == B(k,j,i))
+   end
+
+   lunum.resize(A, {3,1,2,2})
+   local B = lunum.transpose(A)
+   for i,j,k,l in A:indices() do
+      assert(A(i,j,k,l) == B(l,k,j,i))
+   end
 end
 
 test1()
@@ -167,3 +648,4 @@ test9()
 test10()
 test11()
 test12()
+test13()

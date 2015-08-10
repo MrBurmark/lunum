@@ -3,10 +3,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <limits.h>
 
 #include "lunum.h"
-#include "limits.h"
-
 
 
 #define LUA_NEW_METAMETHOD(luastate, obj, funcname) {           \
@@ -432,6 +431,9 @@ static int _array_number_binary_op(lua_State *L, ArrayBinaryOperation op, Bool a
     lua_Number ln;
   } num;
 
+  /* to force integer conversion if possible */
+  int isnum;
+
   if (lua_isboolean(L, num_pos)) {
     num.i = lua_toboolean(L, num_pos);
     /* number can't have a higher type, upgrade to type T */
@@ -447,44 +449,46 @@ static int _array_number_binary_op(lua_State *L, ArrayBinaryOperation op, Bool a
       case ARRAY_TYPE_COMPLEX : num.z = (Complex)num.i; break;
     }
   }
-  else if (lua_isinteger(L, num_pos)) {
-    num.li = lua_tointeger(L, num_pos);
+  else if (num.li = lua_tointegerx(L, num_pos, &isnum), isnum) {
+    /* already assigned above */
     if (T >= ARRAY_TYPE_LONG) {
-      /* A has higher type, upgrade to type T */
-      switch (T) {
-        case ARRAY_TYPE_BOOL    : num.b = (Bool)num.li;    break;
-        case ARRAY_TYPE_CHAR    : num.c = (char)num.li;    break;
-        case ARRAY_TYPE_SHORT   : num.s = (short)num.li;   break;
-        case ARRAY_TYPE_INT     : num.i = (int)num.li;     break;
-        case ARRAY_TYPE_LONG    : num.l = (long)num.li;    break;
-        case ARRAY_TYPE_SIZE_T  : num.t = (size_t)num.li;  break;
-        case ARRAY_TYPE_FLOAT   : num.f = (float)num.li;   break;
-        case ARRAY_TYPE_DOUBLE  : num.d = (double)num.li;  break;
-        case ARRAY_TYPE_COMPLEX : num.z = (Complex)num.li; break;
-      }
+      /* A has higher type */
     } else {
       /* number has higher type */
       T = ARRAY_TYPE_LONG;
     }
+    /* upgrade to type T */
+    switch (T) {
+      case ARRAY_TYPE_BOOL    : num.b = (Bool)num.li;    break;
+      case ARRAY_TYPE_CHAR    : num.c = (char)num.li;    break;
+      case ARRAY_TYPE_SHORT   : num.s = (short)num.li;   break;
+      case ARRAY_TYPE_INT     : num.i = (int)num.li;     break;
+      case ARRAY_TYPE_LONG    : num.l = (long)num.li;    break;
+      case ARRAY_TYPE_SIZE_T  : num.t = (size_t)num.li;  break;
+      case ARRAY_TYPE_FLOAT   : num.f = (float)num.li;   break;
+      case ARRAY_TYPE_DOUBLE  : num.d = (double)num.li;  break;
+      case ARRAY_TYPE_COMPLEX : num.z = (Complex)num.li; break;
+    }
   }
-  else if (lua_isnumber(L, num_pos)) {
-    num.ln = lua_tonumber(L, num_pos);
+  else if (num.ln = lua_tonumberx(L, num_pos, &isnum), isnum) {
+    /* already assigned above */
     if (T >= ARRAY_TYPE_DOUBLE) {
-      /* A has higher type, upgrade to type T */
-      switch (T) {
-        case ARRAY_TYPE_BOOL    : num.b = (Bool)num.ln;    break;
-        case ARRAY_TYPE_CHAR    : num.c = (char)num.ln;    break;
-        case ARRAY_TYPE_SHORT   : num.s = (short)num.ln;   break;
-        case ARRAY_TYPE_INT     : num.i = (int)num.ln;     break;
-        case ARRAY_TYPE_LONG    : num.l = (long)num.ln;    break;
-        case ARRAY_TYPE_SIZE_T  : num.t = (size_t)num.ln;  break;
-        case ARRAY_TYPE_FLOAT   : num.f = (float)num.ln;   break;
-        case ARRAY_TYPE_DOUBLE  : num.d = (double)num.ln;  break;
-        case ARRAY_TYPE_COMPLEX : num.z = (Complex)num.ln; break;
-      }
+      /* A has higher type */
     } else {
       /* number has higher type */
       T = ARRAY_TYPE_DOUBLE;
+    }
+    /* upgrade to type T */
+    switch (T) {
+      case ARRAY_TYPE_BOOL    : num.b = (Bool)num.ln;    break;
+      case ARRAY_TYPE_CHAR    : num.c = (char)num.ln;    break;
+      case ARRAY_TYPE_SHORT   : num.s = (short)num.ln;   break;
+      case ARRAY_TYPE_INT     : num.i = (int)num.ln;     break;
+      case ARRAY_TYPE_LONG    : num.l = (long)num.ln;    break;
+      case ARRAY_TYPE_SIZE_T  : num.t = (size_t)num.ln;  break;
+      case ARRAY_TYPE_FLOAT   : num.f = (float)num.ln;   break;
+      case ARRAY_TYPE_DOUBLE  : num.d = (double)num.ln;  break;
+      case ARRAY_TYPE_COMPLEX : num.z = (Complex)num.ln; break;
     }
   }
   else if (lunum_hasmetatable(L, num_pos, "complex")) {
@@ -564,19 +568,19 @@ static int luaC_complex__unm(lua_State *L) {
 // Use a dictionary ordering on the complex numbers. Might not be useful too
 // often, but it's better than having this behavior undefined.
 // -----------------------------------------------------------------------------
-#define LUA_COMPARISON(comp)				\
-  {							\
-    Complex z1 = lunum_checkcomplex(L, 1);		\
-    Complex z2 = lunum_checkcomplex(L, 2);		\
-							\
-    if (creal(z1) != creal(z2)) {			\
-      lua_pushboolean(L, creal(z1) comp creal(z2));	\
-    }							\
-    else {						\
-      lua_pushboolean(L, cimag(z1) comp cimag(z2));	\
-    }							\
-    return 1;						\
-  }							\
+#define LUA_COMPARISON(comp) \
+  {\
+    Complex z1 = lunum_checkcomplex(L, 1);\
+    Complex z2 = lunum_checkcomplex(L, 2);\
+\
+    if (creal(z1) != creal(z2)) {\
+      lua_pushboolean(L, creal(z1) comp creal(z2));\
+    }\
+    else {\
+      lua_pushboolean(L, cimag(z1) comp cimag(z2));\
+    }\
+    return 1;\
+  }\
 
 
 static int luaC_complex__lt(lua_State *L) LUA_COMPARISON(<);
@@ -1029,11 +1033,11 @@ void _push_value(lua_State *L, ArrayType T, void *v)
 {
   switch (T) {
   case ARRAY_TYPE_BOOL    : lua_pushboolean(L,    *((Bool   *)v)); break;
-  case ARRAY_TYPE_CHAR    : lua_pushnumber (L,    *((char   *)v)); break;
-  case ARRAY_TYPE_SHORT   : lua_pushnumber (L,    *((short  *)v)); break;
-  case ARRAY_TYPE_INT     : lua_pushnumber (L,    *((int    *)v)); break;
-  case ARRAY_TYPE_LONG    : lua_pushnumber (L,    *((long   *)v)); break;
-  case ARRAY_TYPE_SIZE_T  : lua_pushnumber (L,    *((size_t *)v)); break;
+  case ARRAY_TYPE_CHAR    : lua_pushinteger(L,    *((char   *)v)); break;
+  case ARRAY_TYPE_SHORT   : lua_pushinteger(L,    *((short  *)v)); break;
+  case ARRAY_TYPE_INT     : lua_pushinteger(L,    *((int    *)v)); break;
+  case ARRAY_TYPE_LONG    : lua_pushinteger(L,    *((long   *)v)); break;
+  case ARRAY_TYPE_SIZE_T  : lua_pushinteger(L,    *((size_t *)v)); break;
   case ARRAY_TYPE_FLOAT   : lua_pushnumber (L,    *((float  *)v)); break;
   case ARRAY_TYPE_DOUBLE  : lua_pushnumber (L,    *((double *)v)); break;
   case ARRAY_TYPE_COMPLEX : lunum_pushcomplex (L, *((Complex*)v)); break;
