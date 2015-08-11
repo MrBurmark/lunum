@@ -295,7 +295,7 @@ Array array_new_zeros(size_t N, ArrayType T)
 Array array_new_copy(const Array *B, ArrayType T)
 {
   Array A = array_new_zeros(B->size, T);
-  array_resize(&A, B->shape, B->ndims);
+  array_resize_t(&A, B->shape, B->ndims);
   array_assign_from_array(&A, B);
   return A;
 }
@@ -310,7 +310,7 @@ void array_del(Array *A)
   A->shape = NULL;
 }
 
-int array_resize(Array *A, const size_t *N, int Nd)
+int array_resize(Array *A, const int *N, int Nd)
 {
   size_t ntot = 1;
   for (int d=0; d<Nd; ++d) ntot *= N[d];
@@ -318,10 +318,31 @@ int array_resize(Array *A, const size_t *N, int Nd)
   if (A->size != ntot) {
     return 1;
   }
-  if (A->shape) free(A->shape);
+  if (A->ndims != Nd) {
+    if(A->shape) free(A->shape);
+    A->ndims = Nd;
+    A->shape = (size_t*) malloc(Nd*sizeof(size_t));
+  }
 
-  A->ndims = Nd;
-  A->shape = (size_t*) malloc(Nd*sizeof(size_t));
+  for (int d=0; d<Nd; ++d) A->shape[d] = N[d];
+
+  return 0;
+}
+
+int array_resize_t(Array *A, const size_t *N, int Nd)
+{
+  size_t ntot = 1;
+  for (int d=0; d<Nd; ++d) ntot *= N[d];
+
+  if (A->size != ntot) {
+    return 1;
+  }
+  if (A->ndims != Nd) {
+    if(A->shape) free(A->shape);
+    A->ndims = Nd;
+    A->shape = (size_t*) malloc(Nd*sizeof(size_t));
+  }
+
   memcpy(A->shape, N, Nd*sizeof(size_t));
 
   return 0;
@@ -558,9 +579,9 @@ void array_assign_from_array(Array *A, const Array *B)
 
 void array_transpose(const Array *A, Array *B)
 {
-  const int           ndims = A->ndims;
-  const void   *restrict a = A->data;
-  void         *restrict b = B->data;
+  const int        ndims = A->ndims;
+  const void *restrict a = A->data;
+  void       *restrict b = B->data;
 
   if (ndims < 2) {
     /* copy linear array */
@@ -568,14 +589,19 @@ void array_transpose(const Array *A, Array *B)
     return;
   }
 
-  const size_t *restrict shape = A->shape;
-  const ArrayType        TypeA = A->dtype;
+  const size_t *restrict   shape = A->shape;
+  const ArrayType          TypeA = A->dtype;
   size_t       *restrict indices = (size_t *) calloc(ndims, sizeof(size_t));
 
   size_t rpos = 0;
   size_t cpos = 0;
 
   ARRAY_OP_UNARY(TRANSPOSE, TRANSPOSE, TRANSPOSE);
+
+  for (int d = 0; d < ndims; d++) {
+    indices[d] = shape[ndims - d - 1];
+  }
+  array_resize_t(B, indices, ndims);
 
   free(indices);
 }
@@ -609,7 +635,7 @@ Array array_new_from_slice(const Array *B1,
 
 
   Array B0 = array_new_zeros(ntot, B1->dtype);
-  array_resize(&B0, N, Nd);
+  array_resize_t(&B0, N, Nd);
   int sizeof_T = array_sizeof(B0.dtype);
   size_t m = 0; // indexes into B0, advanced uniformly
 

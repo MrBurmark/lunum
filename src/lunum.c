@@ -378,7 +378,7 @@ static int _array_unary_op(lua_State *L, ArrayUnaryOperation op)
   ArrayType T = A->dtype;
 
   Array B = array_new_zeros(N, T);
-  array_resize(&B, A->shape, A->ndims);
+  array_resize_t(&B, A->shape, A->ndims);
   lunum_pusharray1(L, &B);
 
   array_unary_op(L, A, &B, op);
@@ -395,14 +395,14 @@ static int _array_binary_op(lua_State *L, ArrayBinaryOperation op)
       lunum_upcast(L, 1, B->dtype, B->size);
       lua_replace(L, 1);
       Array *A = lunum_checkarray1(L, 1);
-      array_resize(A, B->shape, B->ndims);
+      array_resize_t(A, B->shape, B->ndims);
     }
     if (!lunum_hasmetatable(L, 2, "array")) {
       Array *A = lunum_checkarray1(L, 1);
       lunum_upcast(L, 2, A->dtype, A->size);
       lua_replace(L, 2);
       Array *B = lunum_checkarray1(L, 2);
-      array_resize(B, A->shape, A->ndims);
+      array_resize_t(B, A->shape, A->ndims);
     }
     return _array_array_binary_op(L, op);
   } else {
@@ -500,7 +500,7 @@ static int _array_number_binary_op(lua_State *L, ArrayBinaryOperation op, Bool a
   }
 
   Array C = array_new_zeros(A->size, T);
-  array_resize(&C, A->shape, A->ndims);
+  array_resize_t(&C, A->shape, A->ndims);
   lunum_pusharray1(L, &C);
 
   array_number_binary_op(L, A, (void *)&num, &C, op, array_first);
@@ -526,7 +526,7 @@ static int _array_array_binary_op(lua_State *L, ArrayBinaryOperation op)
   const ArrayType T = (A->dtype >= B->dtype) ? A->dtype : B->dtype;
 
   Array C = array_new_zeros(A->size, T);
-  array_resize(&C, A->shape, A->ndims);
+  array_resize_t(&C, A->shape, A->ndims);
   lunum_pusharray1(L, &C);
 
   array_array_binary_op(L, A, B, &C, op);
@@ -677,7 +677,7 @@ static int luaC_lunum_zeros(lua_State *L)
     for (int d=0; d<Nd; ++d) ntot *= N[d];
     Array A = array_new_zeros(ntot, T);
 
-    array_resize(&A, N, Nd);
+    array_resize_t(&A, N, Nd);
     lunum_pusharray1(L, &A);
 
     return 1;
@@ -722,7 +722,7 @@ static int luaC_lunum_resize(lua_State *L)
     luaL_error(L, "new and old total sizes do not agree");
     return 0;
   }
-  array_resize(A, N, Nd);
+  array_resize_t(A, N, Nd);
 
   return 0;
 }
@@ -731,16 +731,12 @@ static int luaC_lunum_transpose(lua_State *L)
 {
   const Array *A = lunum_checkarray1(L, 1); // the array to transpose
 
-  Array B = array_new_zeros(A->size, A->dtype);
   /* copy transposed shape and size to B */
-  B.ndims = A->ndims;
-  B.shape = (size_t *)malloc(B.ndims * sizeof(size_t));
-  for (int i = 0; i < A->ndims; i++)
-    B.shape[i] = A->shape[A->ndims - i - 1];
+  Array B = array_new_zeros(A->size, A->dtype);
+  array_resize_t(&B, A->shape, A->ndims);
+  array_transpose(A, &B);
 
   lunum_pusharray1(L, &B);
-
-  array_transpose(A, &B);
 
   return 1;
 
@@ -797,7 +793,7 @@ static int luaC_lunum_slice(lua_State *L)
 	++e;
       }
     }
-    array_resize(&B, shape_new, Nd_new);
+    array_resize_t(&B, shape_new, Nd_new);
     free(shape_new);
   }
 
@@ -889,7 +885,7 @@ static int luaC_lunum_loadtxt(lua_State *L)
   Array *A = lunum_checkarray1(L, -1);
 
   size_t shape[2] = { nline, ncols };
-  array_resize(A, shape, ncols == 1 ? 1 : 2);
+  array_resize_t(A, shape, ncols == 1 ? 1 : 2);
 
   free(data);
   return 1;

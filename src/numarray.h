@@ -68,7 +68,8 @@ void       array_unary_op(lua_State * L, const Array *A,
                       Array *B, ArrayUnaryOperation op);
 /* returns the sizeof( the array data type ) */
 int        array_sizeof(ArrayType T);
-int        array_resize(Array *A, const size_t *N, int Nd);
+int        array_resize(Array *A, const int *N, int Nd);
+int        array_resize_t(Array *A, const size_t *N, int Nd);
 void       array_transpose(const Array *A, Array *B);
 void       array_extract_slice(Array *B0, const Array *B1,
 				   size_t *start, size_t *size, size_t *stride, int Nd);
