@@ -57,7 +57,6 @@ typedef enum {
 typedef struct {
   void *data;
   ArrayType dtype;
-  Bool owns;
   int ndims;
   size_t size, *shape;
 } Array;

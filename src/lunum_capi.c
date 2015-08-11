@@ -4,13 +4,15 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define LUNUM_PRIVATE_API
 #include "lunum.h"
 
 
 void lunum_pusharray1(lua_State *L, Array *B)
 {
-  _lunum_register_array(L, B);
+  Array *A = (Array*) lua_newuserdata(L, sizeof(Array));
+  *A = *B;
+
+  luaL_setmetatable(L, "array");
 }
 
 void lunum_pusharray2(lua_State *L, void *data, ArrayType T, size_t N)
@@ -22,19 +24,7 @@ void lunum_pusharray2(lua_State *L, void *data, ArrayType T, size_t N)
 
 Array *lunum_checkarray1(lua_State *L, int pos)
 {
-  lua_pushvalue(L, pos);
-
-  if (!lunum_hasmetatable(L, -1, "array")) {
-    luaL_error(L, "bad argument #%d (array expected, got %s)",
-               pos, lua_typename(L, lua_type(L, -1)));
-  }
-  lua_pushstring(L, "__cstruct");
-  lua_rawget(L, -2);
-
-  Array *A = (Array*) lua_touserdata(L, -1);
-  lua_pop(L, 2);
-
-  return A;
+  return (Array*) luaL_checkudata(L, pos, "array");
 }
 
 void *lunum_checkarray2(lua_State *L, int pos, ArrayType T, size_t *N)

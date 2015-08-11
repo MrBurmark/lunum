@@ -35,11 +35,11 @@ local function type_min(A, B)
 end
 -- returns true if lout is not representable in the higher typed of A, B
 local function under_over_flow(A, B, lout)
-   if type(A) == 'table' and type(B) == 'table' then
+   if type(A) == 'userdata' and getmetatable(A).__name == 'array' and type(B) == 'userdata' and getmetatable(B).__name == 'array' then
       return (lout > type_max(A, B)) or (lout < type_min(A, B))
-   elseif type(A) == 'table' then
+   elseif type(A) == 'userdata' and getmetatable(A).__name == 'array' then
       return (lout > A:dtypemax()) or (lout < A:dtypemin())
-   elseif type(B) == 'table' then
+   elseif type(B) == 'userdata' and getmetatable(B).__name == 'array' then
       return (lout > B:dtypemax()) or (lout < B:dtypemin())
    else
       return false
@@ -53,7 +53,7 @@ end
 local function int_typed(...)
    local ints = true
    for _,v in pairs({...}) do
-      if type(v) == 'table' then
+      if type(v) == 'userdata' and getmetatable(v).__name == 'array' then
          ints = ints and lunum[v:dtype()] <= lunum.size_t
       else
          ints = ints and math.tointeger(v)
@@ -70,11 +70,11 @@ local function test_binary_op(name, i, A, B, aout, lout)
       lout = lout >= 0 and math.floor(lout) or math.ceil(lout)
    end
    if (aout[i] ~= lout and not under_over_flow(A, B, lout) and not both_nan(aout[i], lout)) then
-      if type(A) == 'table' and type(B) == 'table' then
+      if type(A) == 'userdata' and getmetatable(A).__name == 'array' and type(B) == 'userdata' and getmetatable(B).__name == 'array' then
          print('binary op failed', name, i, A:dtype(), B:dtype(), A[i], B[i], aout:dtype(), aout[i], '~=', lout)
-      elseif type(A) == 'table' then
+      elseif type(A) == 'userdata' and getmetatable(A).__name == 'array' then
          print('binary op failed', name, i, A:dtype(), B, A[i], B, aout:dtype(), aout[i], '~=', lout)
-      elseif type(B) == 'table' then
+      elseif type(B) == 'userdata' and getmetatable(B).__name == 'array' then
          print('binary op failed', name, i, A, B:dtype(), A, B[i], aout:dtype(), aout[i], '~=', lout)
       else
          print('binary op failed', name, i, A, B, A, B, aout, '~=', lout)
@@ -93,35 +93,18 @@ local function test1()
    local A = lunum.zeros(100)
 
    -- check array object table
-   local expected_arrayfunctions = {max=false, imag=false, shape=false, eq=false, min=false,
-                                    copy=false, real=false, astable=false, indices=false, ne=false,
-                                    resize=false, size=false, setasflat=false, dtype=false, reshape=false,
-                                    gt=false, ge=false, le=false, tofile=false, astype=false, conj=false,
-                                    lt=false, dtypemin=false, dtypemax=false}
-
-   local expected_arrayuserdata = {__cstruct=false, __buffer=false}
-
-   for k,v in raw_pairs(A) do
-      if (expected_arrayfunctions[k] == false) then
-         assert(type(v) == 'function')
-         expected_arrayfunctions[k] = true
-      elseif (expected_arrayuserdata[k] == false) then
-         assert(type(v) == 'userdata')
-         expected_arrayuserdata[k] = true
-      else
-         print('Unknown pair in array', k, v)
-         assert(false)
-      end
-   end
-
-   check_table_true(expected_arrayfunctions)
-   check_table_true(expected_arrayuserdata)
+   assert(type(A) == 'userdata')
 
    -- check array object metatable
    local expected_metafunctions = {__gc=false, __div=false, __index=false, __band=false, __add=false,
                                     __mod=false, __sub=false, __call=false, __unm=false, __pow=false,
                                     __mul=false, __shl=false, __bxor=false, __idiv=false, __bor=false,
-                                    __bnot=false, __newindex=false, __tostring=false, __shr=false}
+                                    __bnot=false, __newindex=false, __tostring=false, __shr=false,
+                                    dtypemin=false, dtypemax=false, dtype=false, shape=false, size=false,
+                                    astable=false, astype=false, tofile=false, max=false, imag=false, 
+                                    eq=false, min=false, copy=false, real=false, indices=false, ne=false,
+                                    resize=false, setasflat=false, reshape=false, gt=false, ge=false, 
+                                    le=false, conj=false, lt=false}
 
    local expected_metastrings = {__name=false}
 
@@ -142,8 +125,8 @@ local function test1()
    check_table_true(expected_metastrings)
 
    -- check lunum table
-   local expected_functions = {tanh=false, atanh=false, __register_array=false, sinh=false, 
-                              asin=false, __build_slice=false, acosh=false, zeros=false, 
+   local expected_functions = {tanh=false, atanh=false, __register_array_metafunctions=false, 
+                              sinh=false, asin=false, __build_slice=false, acosh=false, zeros=false, 
                               conjugate=false, array=false, resize=false, sin=false, cos=false,
                               fromfile=false, exp=false, log=false, log10=false, range=false,
                               asinh=false, apply=false, slice=false, cosh=false, acos=false,

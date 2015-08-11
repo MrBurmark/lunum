@@ -30,8 +30,4 @@ int           lunum_upcast(lua_State *L, int pos, ArrayType T, size_t N);
 int           lunum_hasmetatable(lua_State *L, int pos, const char *name);
 void          lunum_tovalue(lua_State *L, ArrayType T, ArrayAllNum *num);
 
-#ifdef LUNUM_PRIVATE_API
-void         _lunum_register_array(lua_State *L, Array *B);
-#endif // LUNUM_PRIVATE_API
-
 #endif // __NumluaCapi_HEADER__

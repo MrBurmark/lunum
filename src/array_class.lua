@@ -302,26 +302,26 @@ local function __build_slice(A,t)
 end
 
 -- -----------------------------------------------------------------------------
--- This function gets called from C code to register an array's class methods
--- have been were implemented in Lua.
+-- This function sets the array metatable class methods
+-- that have been implemented in Lua.
 -- -----------------------------------------------------------------------------
-local function __register_array(t)
-   t.copy      = copy
-   t.min       = min
-   t.max       = max
-   t.real      = real
-   t.imag      = imag
-   t.conj      = conj
-   t.resize    = resize
-   t.setasflat = setasflat
-   t.reshape   = reshape
-   t.indices   = indices
-   t.eq        = eq
-   t.ne        = ne
-   t.lt        = lt
-   t.le        = le
-   t.gt        = gt
-   t.ge        = ge
+local function __register_array_metafunctions(mt)
+   mt.copy      = copy
+   mt.min       = min
+   mt.max       = max
+   mt.real      = real
+   mt.imag      = imag
+   mt.conj      = conj
+   mt.resize    = resize
+   mt.setasflat = setasflat
+   mt.reshape   = reshape
+   mt.indices   = indices
+   mt.eq        = eq
+   mt.ne        = ne
+   mt.lt        = lt
+   mt.le        = le
+   mt.gt        = gt
+   mt.ge        = ge
 end
 
 
@@ -329,6 +329,6 @@ end
 -- Registering the functions with the lunum table.
 -- -----------------------------------------------------------------------------
 lunum.__build_slice    = __build_slice
-lunum.__register_array = __register_array
+lunum.__register_array_metafunctions = __register_array_metafunctions
 lunum.apply = apply
 

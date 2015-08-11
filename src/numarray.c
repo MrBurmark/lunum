@@ -278,7 +278,6 @@ Array array_new_zeros(size_t N, ArrayType T)
   Array A;
 
   A.data  = malloc(N*array_sizeof(T));
-  A.owns  = 1;
   A.size  = N;
   A.dtype = T;
   A.shape = (size_t*) malloc(sizeof(size_t));
@@ -302,7 +301,7 @@ Array array_new_copy(const Array *B, ArrayType T)
 
 void array_del(Array *A)
 {
-  if (A->data && A->owns) free(A->data);
+  if (A->data) free(A->data);
   if (A->shape) free(A->shape);
 
   A->size = 0;
