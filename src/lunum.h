@@ -7,6 +7,15 @@
 #include "lualib.h"
 #include "lauxlib.h"
 
+#ifndef LUNUM_API_NOCOMPLEX
+
+#include <complex.h>
+typedef double complex Complex;
+
+Complex       lunum_checkcomplex(lua_State *L, int n);
+void          lunum_pushcomplex(lua_State *L, Complex z);
+#endif // LUNUM_API_COMPLEX
+
 #include "numarray.h"
 
 int luaopen_lunum(lua_State *L);
@@ -19,16 +28,7 @@ void          lunum_pusharray2(lua_State *L, void *data, ArrayType T, size_t N);
 void          lunum_astable(lua_State *L, int pos);
 int           lunum_upcast(lua_State *L, int pos, ArrayType T, size_t N);
 int           lunum_hasmetatable(lua_State *L, int pos, const char *name);
-void         *lunum_tovalue(lua_State *L, ArrayType T);
-
-#ifndef LUNUM_API_NOCOMPLEX
-
-#include <complex.h>
-typedef double complex Complex;
-
-Complex       lunum_checkcomplex(lua_State *L, int n);
-void          lunum_pushcomplex(lua_State *L, Complex z);
-#endif // LUNUM_API_COMPLEX
+void          lunum_tovalue(lua_State *L, ArrayType T, ArrayAllNum *num);
 
 #ifdef LUNUM_PRIVATE_API
 void         _lunum_register_array(lua_State *L, Array *B);

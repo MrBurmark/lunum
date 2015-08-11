@@ -20,6 +20,20 @@ typedef enum {
   ARRAY_TYPE_COMPLEX,
 } ArrayType;
 
+typedef union {
+  Bool b;
+  char c;
+  short s;
+  int i;
+  long l;
+  size_t t;
+  float f;
+  double d;
+  Complex z;
+  lua_Integer li;
+  lua_Number ln;
+} ArrayAllNum;
+
 typedef enum {
   ARRAY_OP_ADD,
   ARRAY_OP_SUB,

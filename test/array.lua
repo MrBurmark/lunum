@@ -486,10 +486,10 @@ local function test8()
    local A = lunum.array({1,2,3,4,5,6,7,8})
    local B = A:copy()
    lunum.resize(B, {4,2})
-   local i = 0
+   local n = 0
    for I in B:indices('table') do
-      assert(B[I] == A[i])
-      i = i + 1
+      assert(B[I] == A[n])
+      n = n + 1
    end
    lunum.resize(B, {2,4})
    local i = 0

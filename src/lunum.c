@@ -117,7 +117,7 @@ static int _complex_binary_op2(lua_State *L, ArrayBinaryOperation op);
 
 static void _unary_func(lua_State *L, double(*f)(double), Complex(*g)(Complex), int cast);
 static void _push_value(lua_State *L, ArrayType T, void *v);
-static size_t _get_index(lua_State *L, Array *A);
+static size_t _get_index(lua_State *L, Array *A, int *success);
 
 
 int luaopen_lunum(lua_State *L)
@@ -280,29 +280,38 @@ static int luaC_array__tostring(lua_State *L)
 static int luaC_array__call(lua_State *L)
 {
   Array *A = lunum_checkarray1(L, 1);
-  int nind = lua_gettop(L) - 1;
+
+  /* slicing done here to split concerns between indexing and slicing */
+  if (lua_type(L, 2) == LUA_TTABLE || lua_type(L, 2) == LUA_TSTRING) {
+    /* make slice */
+    lua_getglobal(L, "lunum");
+    lua_getfield(L, -1, "__build_slice");
+    lua_insert(L, 1);
+    lua_settop(L, 3);
+    lua_call(L, 2, 1);
+
+    return 1;
+  }
+  /* index */
+  const int nind = lua_gettop(L) - 1;
 
   if (nind != A->ndims) {
     luaL_error(L, "wrong number of indices (%d) for array of dimension %d",
                nind, A->ndims);
     return 0;
   }
-  const int Nd = A->ndims;
-  size_t *stride = (size_t*) malloc(A->ndims * sizeof(size_t));
-  stride[Nd-1] = 1;
 
-  for (int d=Nd-2; d>=0; --d) {
-    stride[d] = stride[d+1] * A->shape[d+1];
-  }
-
+  int isnum;
   size_t m = 0;
-  for (int d=0; d<A->ndims; ++d) {
-    lua_Integer i = lua_tointeger(L, d+2);
-    m += i*stride[d];
+  for (int d=0; d < nind; ++d) {
+    const size_t i = lua_tointegerx(L, d+2, &isnum);
+    if (i >= A->shape[d]) {
+      luaL_error(L, "array indexed out of bounds (%lu) on dimension %d of size %lu",
+                 i, d, A->shape[d]);
+    } else if (!isnum) luaL_error(L, "non-integer index encountered");
+    m = m * A->shape[d] + i;
   }
-
   _push_value(L, A->dtype, (char*)A->data + m*array_sizeof(A->dtype));
-  free(stride);
 
   return 1;
 }
@@ -312,8 +321,7 @@ static int luaC_array__index(lua_State *L)
   Array *A = lunum_checkarray1(L, 1);
 
   // Figure out what is the format of the input index. If it's a number or a
-  // table of numbers, then pass it along to _get_index. If it's a table of
-  // tables or numbers, then assume it's a slice. If it's an array of bools,
+  // table of numbers, then pass it along to _get_index. If it's an array of bools,
   // then use it as a mask.
   // ---------------------------------------------------------------------------
 
@@ -326,35 +334,39 @@ static int luaC_array__index(lua_State *L)
     lunum_pusharray1(L, &B);
     return 1;
   }
-  else if (lua_type(L, 2) == LUA_TTABLE || lua_type(L, 2) == LUA_TSTRING) {
 
-    lua_getglobal(L, "lunum");
-    lua_getfield(L, -1, "__build_slice");
-    lua_remove(L, -2);
-    lua_pushvalue(L, 1);
-    lua_pushvalue(L, 2);
-    lua_call(L, 2, 1);
-
+  /* try to index into array */
+  int success;
+  const size_t m = _get_index(L, A, &success);
+  if (success) {
+    _push_value(L, A->dtype, (char*)A->data + array_sizeof(A->dtype)*m);
     return 1;
   }
 
-  const size_t m = _get_index(L, A);
-  _push_value(L, A->dtype, (char*)A->data + array_sizeof(A->dtype)*m);
+  /* check metatable */
+  lua_getmetatable(L, 1);
+  lua_pushvalue(L, 2);
+  if (lua_gettable(L, -2) != LUA_TNIL) {
+    return 1;
+  }
 
-  return 1;
+  return 0;
 }
-
 
 static int luaC_array__newindex(lua_State *L)
 {
   Array *A = lunum_checkarray1(L, 1);
-  const size_t m = _get_index(L, A);
 
-  const ArrayType T = A->dtype;
+  int success;
+  const size_t m = _get_index(L, A, &success);
 
-  void *val = lunum_tovalue(L, T);
-  memcpy((char*)A->data + array_sizeof(T)*m, val, array_sizeof(T));
-  free(val);
+  if (success) {
+    const ArrayType T = A->dtype;
+    ArrayAllNum val;
+
+    lunum_tovalue(L, T, &val);
+    memcpy((char*)A->data + array_sizeof(T)*m, &val, array_sizeof(T));
+  }
 
   return 0;
 }
@@ -875,7 +887,7 @@ static int luaC_lunum_loadtxt(lua_State *L)
 
     if (ncols == 0) ncols = nvals;
     if (ncols != nvals) {
-      luaL_error(L, "wrong number of data on line %ld of %s", nline, fname);
+      luaL_error(L, "wrong number of data on line %lu of %s", nline, fname);
     }
 
     data = (double*) realloc(data, (ntot+=nvals)*sizeof(double));
@@ -990,34 +1002,38 @@ void _unary_func(lua_State *L, double(*f)(double), Complex(*g)(Complex), int cas
   }
 }
 
-size_t _get_index(lua_State *L, Array *A)
+size_t _get_index(lua_State *L, Array *A, int *success)
 {
   size_t m = 0;
-  int isnum;
 
-  if (m = lua_tointegerx(L, 2, &isnum), isnum) {
+  if (m = lua_tointegerx(L, 2, success), *success) {
 
     if (m >= A->size) {
       luaL_error(L, "index %ld out of bounds on array of length %lu", m, A->size);
     }
   }
   else if (lua_istable(L, 2)) {
-    size_t Nd_t;
-    size_t *ind = (size_t*) lunum_checkarray2(L, 2, ARRAY_TYPE_SIZE_T, &Nd_t);
-    int Nd = (int)Nd_t;
 
-    if (A->ndims != Nd) {
-      luaL_error(L, "wrong number of indices (%lu) on array of dimension %d",
-                 Nd, A->ndims);
+    const int nind = luaL_len(L, 2);
+
+    if (A->ndims != nind) {
+      luaL_error(L, "wrong number of indices (%d) on array of dimension %d",
+                 nind, A->ndims);
     }
 
-    for (int d=0; d < A->ndims; ++d) {
-      if (ind[d] >= A->shape[d]) {
-        luaL_error(L, "array indexed out of bounds (%lu) on dimension %lu of size %lu",
-                   ind[d], d, A->shape[d]);
-      }
-      m = m * A->shape[d] + ind[d];
+    for (int d=0; d < nind; ++d) {
+      lua_geti(L, 2, d+1);
+      const size_t i = lua_tointegerx(L, -1, success);
+      lua_pop(L, 1);
+      if (i >= A->shape[d]) {
+        luaL_error(L, "array indexed out of bounds (%lu) on dimension %d of size %lu",
+                   i, d, A->shape[d]);
+      } else if ( !(*success) ) { return m; }
+      m = m * A->shape[d] + i;
     }
+  } else {
+    /* failure */
+    *success = 0;
   }
   return m;
 }
