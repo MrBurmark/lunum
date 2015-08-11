@@ -59,15 +59,15 @@ void lunum_astable(lua_State *L, int pos)
     lua_pushinteger(L, i+1);
 
     switch (A->dtype) {
-    case ARRAY_TYPE_BOOL    : lua_pushboolean  (L, ((Bool    *)a)[i]); break;
-    case ARRAY_TYPE_CHAR    : lua_pushinteger  (L, ((char    *)a)[i]); break;
-    case ARRAY_TYPE_SHORT   : lua_pushinteger  (L, ((short   *)a)[i]); break;
-    case ARRAY_TYPE_INT     : lua_pushinteger  (L, ((int     *)a)[i]); break;
-    case ARRAY_TYPE_LONG    : lua_pushinteger  (L, ((long    *)a)[i]); break;
-    case ARRAY_TYPE_SIZE_T  : lua_pushinteger  (L, ((size_t  *)a)[i]); break;
-    case ARRAY_TYPE_FLOAT   : lua_pushnumber   (L, ((float   *)a)[i]); break;
-    case ARRAY_TYPE_DOUBLE  : lua_pushnumber   (L, ((double  *)a)[i]); break;
-    case ARRAY_TYPE_COMPLEX : lunum_pushcomplex(L, ((Complex *)a)[i]); break;
+      case ARRAY_TYPE_BOOL    : lua_pushboolean  (L, ((Bool    *)a)[i]); break;
+      case ARRAY_TYPE_CHAR    : lua_pushinteger  (L, ((char    *)a)[i]); break;
+      case ARRAY_TYPE_SHORT   : lua_pushinteger  (L, ((short   *)a)[i]); break;
+      case ARRAY_TYPE_INT     : lua_pushinteger  (L, ((int     *)a)[i]); break;
+      case ARRAY_TYPE_LONG    : lua_pushinteger  (L, ((long    *)a)[i]); break;
+      case ARRAY_TYPE_SIZE_T  : lua_pushinteger  (L, ((size_t  *)a)[i]); break;
+      case ARRAY_TYPE_FLOAT   : lua_pushnumber   (L, ((float   *)a)[i]); break;
+      case ARRAY_TYPE_DOUBLE  : lua_pushnumber   (L, ((double  *)a)[i]); break;
+      case ARRAY_TYPE_COMPLEX : lunum_pushcomplex(L, ((Complex *)a)[i]); break;
     }
 
     lua_settable(L, -3);
@@ -77,8 +77,7 @@ void lunum_astable(lua_State *L, int pos)
 void lunum_pushcomplex(lua_State *L, Complex z)
 {
   Complex *w = (Complex*) lua_newuserdata(L, sizeof(Complex));
-  luaL_getmetatable(L, "complex");
-  lua_setmetatable(L, -2);
+  luaL_setmetatable(L, "complex");
   *w = z;
 }
 
@@ -96,7 +95,7 @@ int lunum_upcast(lua_State *L, int pos, ArrayType T, size_t N)
 // nothing and return 0. If the dtype is not 'T', then return 1 and push a copy
 // of that array with dtype 'T' onto the stack. If it is a table, then push an
 // array of dtype 'T' having the length of the table. If it is a number or
-// complex, then push an array of dtype float or complex respectively having
+// complex, then push an array of dtype double or complex respectively having
 // length 'N'.
 // -----------------------------------------------------------------------------
 {
@@ -197,40 +196,55 @@ int lunum_hasmetatable(lua_State *L, int pos, const char *name)
   return eq;
 }
 
+#define ASSIGN_FROM(x) \
+    switch (T) {\
+      case ARRAY_TYPE_BOOL    : *((Bool   *)y) = (Bool)   (x); break;\
+      case ARRAY_TYPE_CHAR    : *((char   *)y) = (char)   (x); break;\
+      case ARRAY_TYPE_SHORT   : *((short  *)y) = (short)  (x); break;\
+      case ARRAY_TYPE_INT     : *((int    *)y) = (int)    (x); break;\
+      case ARRAY_TYPE_LONG    : *((long   *)y) = (long)   (x); break;\
+      case ARRAY_TYPE_SIZE_T  : *((size_t *)y) = (size_t) (x); break;\
+      case ARRAY_TYPE_FLOAT   : *((float  *)y) = (float)  (x); break;\
+      case ARRAY_TYPE_DOUBLE  : *((double *)y) = (double) (x); break;\
+      case ARRAY_TYPE_COMPLEX : *((Complex*)y) = (Complex)(x); break;\
+    }
 
 void *lunum_tovalue(lua_State *L, ArrayType T)
 {
-  Complex x=0.0;
-
-  int isnum;
-
-  if (x = lua_tointegerx(L, -1, &isnum), isnum) {
-    /* assignment done above */
-  } else if (x = lua_tonumberx(L, -1, &isnum), isnum) {
-    /* assignment done above */
-  }
-  else if (lua_isboolean(L, -1)) {
-    x = lua_toboolean(L, -1);
-  }
-  else if (lunum_hasmetatable(L, -1, "complex")) {
-    x = *((Complex*) lua_touserdata(L, -1));
-  }
-  else {
-    luaL_error(L, "unkown data type");
-  }
+  union {
+    Bool b;
+    char c;
+    short s;
+    int i;
+    long l;
+    size_t t;
+    float f;
+    double d;
+    Complex z;
+    lua_Integer li;
+    lua_Number ln;
+  } num;
 
   void *y = malloc(array_sizeof(T));
 
-  switch (T) {
-    case ARRAY_TYPE_BOOL    : *((Bool   *)y) = x; break;
-    case ARRAY_TYPE_CHAR    : *((char   *)y) = x; break;
-    case ARRAY_TYPE_SHORT   : *((short  *)y) = x; break;
-    case ARRAY_TYPE_INT     : *((int    *)y) = x; break;
-    case ARRAY_TYPE_LONG    : *((long   *)y) = x; break;
-    case ARRAY_TYPE_SIZE_T  : *((size_t *)y) = x; break;
-    case ARRAY_TYPE_FLOAT   : *((float  *)y) = x; break;
-    case ARRAY_TYPE_DOUBLE  : *((double *)y) = x; break;
-    case ARRAY_TYPE_COMPLEX : *((Complex*)y) = x; break;
+  int isnum;
+
+  if (num.li = lua_tointegerx(L, -1, &isnum), isnum) {
+    ASSIGN_FROM(num.li);
+  } else if (num.ln = lua_tonumberx(L, -1, &isnum), isnum) {
+    ASSIGN_FROM(num.ln);
+  }
+  else if (lua_isboolean(L, -1)) {
+    num.b = lua_toboolean(L, -1);
+    ASSIGN_FROM(num.b);
+  }
+  else if (lunum_hasmetatable(L, -1, "complex")) {
+    num.z = *((Complex*) lua_touserdata(L, -1));
+    ASSIGN_FROM(num.z);
+  }
+  else {
+    free(y);
+    luaL_error(L, "unkown data type");
   }
 
   return y;

@@ -319,8 +319,10 @@ int array_resize(Array *A, const int *N, int Nd)
     return 1;
   }
   if (A->ndims != Nd) {
-    if(A->shape) free(A->shape);
+    if (A->shape) {free(A->shape); A->shape = NULL;}
     A->ndims = Nd;
+  }
+  if (A->shape == NULL) {
     A->shape = (size_t*) malloc(Nd*sizeof(size_t));
   }
 
@@ -338,8 +340,10 @@ int array_resize_t(Array *A, const size_t *N, int Nd)
     return 1;
   }
   if (A->ndims != Nd) {
-    if(A->shape) free(A->shape);
+    if (A->shape) {free(A->shape); A->shape = NULL;}
     A->ndims = Nd;
+  }
+  if (A->shape == NULL) {
     A->shape = (size_t*) malloc(Nd*sizeof(size_t));
   }
 
@@ -535,45 +539,15 @@ void array_assign_from_array(Array *A, const Array *B)
   }
 }
 
-#define POS_ROWMAJOR(pos) \
-{\
-  pos = indices[0];\
-  for(int i = 1; i < ndims; ++i) {\
-    pos = pos * shape[i] + indices[i];\
-  }\
-}
-
-#define POS_COLMAJOR(pos) \
-{\
-  pos = indices[ndims-1];\
-  for(int i = ndims-2; i >= 0; --i) {\
-    pos = pos * shape[i] + indices[i];\
-  }\
-}
-
-#define ADVANCE_INDICES() \
-{\
-  ++(indices[0]);\
-  for(int i = 0; i < ndims-1; ++i) {\
-    if (indices[i] >= shape[i]){\
-      indices[i] = 0;\
-      ++(indices[i+1]);\
-    } else {\
-      break;\
-    }\
-  }\
-}
-
 #define TRANSPOSE(Ta, Tb) \
 {\
-  cpos = 0;\
-  while (indices[ndims-1] < shape[ndims-1])\
+  rpos = 0;\
+  while (indices[0] < shape[0])\
   {\
-    POS_ROWMAJOR(rpos);\
-    /* POS_COLMAJOR(cpos); sequential */\
+    POS_COLMAJOR(cpos, indices, shape, ndims);\
     ((Tb*)b)[cpos]=((Ta*)a)[rpos];\
-    ADVANCE_INDICES();\
-    ++cpos;\
+    ADVANCE_INDICES(indices, shape, ndims);\
+    ++rpos;\
   }\
 }
 

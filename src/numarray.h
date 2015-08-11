@@ -74,4 +74,33 @@ void       array_transpose(const Array *A, Array *B);
 void       array_extract_slice(Array *B0, const Array *B1,
 				   size_t *start, size_t *size, size_t *stride, int Nd);
 
+#define POS_ROWMAJOR(pos, indices, shape, ndims) \
+{\
+  (pos) = 0;\
+  for(int _d = 0; _d < (ndims); ++_d) {\
+    (pos) = (pos) * (shape)[_d] + (indices)[_d];\
+  }\
+}
+
+#define POS_COLMAJOR(pos, indices, shape, ndims) \
+{\
+  (pos) = 0;\
+  for(int _d = (ndims)-1; _d >= 0; --_d) {\
+    (pos) = (pos) * (shape)[_d] + (indices)[_d];\
+  }\
+}
+
+#define ADVANCE_INDICES(indices, shape, ndims) \
+{\
+  ++((indices)[(ndims)-1]);\
+  for(int _d = (ndims)-1; _d > 0; --_d) {\
+    if ((indices)[_d] >= (shape)[_d]){\
+      (indices)[_d] = 0;\
+      ++((indices)[_d-1]);\
+    } else {\
+      break;\
+    }\
+  }\
+}
+
 #endif // __Array_HEADER__

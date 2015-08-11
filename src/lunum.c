@@ -14,6 +14,12 @@
     lua_settable((luastate), -3);                               \
   }
 
+#define LUA_NEW_METAFUNCTION(luastate, obj, funcname) {         \
+    lua_pushfstring((luastate), "%s", (#funcname));             \
+    lua_pushcfunction((luastate), (luaC_##obj##_##funcname));   \
+    lua_settable((luastate), -3);                               \
+  }
+
 #define LUA_NEW_MODULEMETHOD(luastate, obj, funcname) {         \
     lua_pushfstring((luastate), "%s", (#funcname));             \
     lua_pushcfunction((luastate), (luaC_##obj##_##funcname));   \
@@ -109,8 +115,7 @@ static int _array_array_binary_op(lua_State *L, ArrayBinaryOperation op);
 static int _complex_binary_op1(lua_State *L, ArrayBinaryOperation op);
 static int _complex_binary_op2(lua_State *L, ArrayBinaryOperation op);
 
-static void _unary_func(lua_State *L, double(*f)(double), Complex(*g)(Complex),
-			int cast);
+static void _unary_func(lua_State *L, double(*f)(double), Complex(*g)(Complex), int cast);
 static void _push_value(lua_State *L, ArrayType T, void *v);
 static size_t _get_index(lua_State *L, Array *A);
 
@@ -987,12 +992,12 @@ void _unary_func(lua_State *L, double(*f)(double), Complex(*g)(Complex), int cas
 
 size_t _get_index(lua_State *L, Array *A)
 {
-  lua_Integer m = 0;
+  size_t m = 0;
+  int isnum;
 
-  if (lua_isnumber(L, 2)) {
-    m = luaL_checkinteger(L, 2);
+  if (m = lua_tointegerx(L, 2, &isnum), isnum) {
 
-    if (m >= A->size || m < 0) {
+    if (m >= A->size) {
       luaL_error(L, "index %ld out of bounds on array of length %lu", m, A->size);
     }
   }
@@ -1005,21 +1010,14 @@ size_t _get_index(lua_State *L, Array *A)
       luaL_error(L, "wrong number of indices (%lu) on array of dimension %d",
                  Nd, A->ndims);
     }
-    size_t *stride = (size_t*) malloc(A->ndims * sizeof(size_t));
-    stride[Nd-1] = 1;
 
-    for (int d=Nd-2; d>=0; --d) {
-      stride[d] = stride[d+1] * A->shape[d+1];
-    }
-
-    for (int d=0; d<A->ndims; ++d) {
-      if (ind[d] >= A->shape[d] || ind[d] < 0) {
+    for (int d=0; d < A->ndims; ++d) {
+      if (ind[d] >= A->shape[d]) {
         luaL_error(L, "array indexed out of bounds (%lu) on dimension %lu of size %lu",
                    ind[d], d, A->shape[d]);
       }
-      m += ind[d]*stride[d];
+      m = m * A->shape[d] + ind[d];
     }
-    free(stride);
   }
   return m;
 }
