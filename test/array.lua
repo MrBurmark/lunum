@@ -159,7 +159,7 @@ local function test1()
                               conjugate=false, array=false, resize=false, sin=false, cos=false,
                               fromfile=false, exp=false, log=false, log10=false, range=false,
                               asinh=false, apply=false, slice=false, cosh=false, acos=false,
-                              transpose=false, atan=false, tan=false, loadtxt=false}
+                              transpose=false, atan=false, tan=false, loadtxt=false, linear=false}
 
    local expected_numbers = {char=false, short=false, double=false, long=false, int=false, 
                               complex=false, size_t=false, float=false, bool=false}
@@ -648,6 +648,31 @@ local function test13()
    end
 end
 
+-- test linear
+local function test14()
+   print('test14')
+   local A = lunum.linear(-2, 2, 5, lunum.char)
+   local B = lunum.linear(3, -4, 8)
+   local C = lunum.linear(-math.pi/2, math.exp(1), 13)
+
+   local n = -2
+   for i in A:indices() do
+      assert(A[i] == n)
+      n = n + 1
+   end
+
+   local n = 3
+   for i in B:indices() do
+      assert(B[i] == n)
+      n = n - 1
+   end
+
+   for i in C:indices() do
+      local n = ((C:size() - 1 - i) * (-math.pi/2) + i * math.exp(1)) / 12
+      assert(C[i] == n)
+   end
+end
+
 test1()
 test2()
 test3()
@@ -661,3 +686,4 @@ test10()
 test11()
 test12()
 test13()
+test14()

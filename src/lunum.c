@@ -37,6 +37,7 @@
 static int luaC_lunum_array(lua_State *L);
 static int luaC_lunum_zeros(lua_State *L);
 static int luaC_lunum_range(lua_State *L);
+static int luaC_lunum_linear(lua_State *L);
 static int luaC_lunum_resize(lua_State *L);
 
 
@@ -194,6 +195,7 @@ int luaopen_lunum(lua_State *L)
   LUA_NEW_MODULEMETHOD(L, lunum, array);
   LUA_NEW_MODULEMETHOD(L, lunum, zeros);
   LUA_NEW_MODULEMETHOD(L, lunum, range);
+  LUA_NEW_MODULEMETHOD(L, lunum, linear);
   LUA_NEW_MODULEMETHOD(L, lunum, resize);
 
   LUA_NEW_MODULEMETHOD(L, lunum, sin);
@@ -332,7 +334,7 @@ static int luaC_array__call(lua_State *L)
   for (int d=0; d < nind; ++d) {
     const size_t i = lua_tointegerx(L, d+2, &isnum);
     if (i >= A->shape[d]) {
-      luaL_error(L, "array indexed out of bounds (%lu) on dimension %d of size %lu",
+      luaL_error(L, "array indexed out of bounds (%d) on dimension %d of size %d",
                  i, d, A->shape[d]);
     } else if (!isnum) luaL_error(L, "non-integer index encountered");
     m = m * A->shape[d] + i;
@@ -748,6 +750,7 @@ static int luaC_lunum_zeros(lua_State *L)
 {
   if (lua_isnumber(L, 1)) {
     const lua_Integer N = luaL_checkinteger(L, 1);
+    if (N <= 0) luaL_error(L, "Invalid size %d", N);
     const ArrayType T = (ArrayType) luaL_optinteger(L, 2, ARRAY_TYPE_DOUBLE);
     Array A = array_new_zeros(N, T);
     lunum_pusharray1(L, &A);
@@ -778,6 +781,7 @@ static int luaC_lunum_zeros(lua_State *L)
 static int luaC_lunum_range(lua_State *L)
 {
   const lua_Integer N = luaL_checkinteger(L, 1);
+  if (N <= 0) luaL_error(L, "Invalid size %d", N);
   if (N <= INT_MAX) {
     Array A = array_new_zeros(N, ARRAY_TYPE_INT);
     lunum_pusharray1(L, &A);
@@ -791,6 +795,39 @@ static int luaC_lunum_range(lua_State *L)
       ((long*)A.data)[i] = i;
     }
   }
+  
+  return 1;
+}
+
+#define EXPR_ASSIGN_LINEAR(T) {for(size_t i=0;i<=N-1;++i)((T*)a)[i]=((N-1-i)*e1 + i*e2)/(N-1);}
+
+#define ARRAY_ASSIGN_OP(sw, op) \
+    switch (sw) {\
+      case ARRAY_TYPE_BOOL    : op(Bool   ) ; break;\
+      case ARRAY_TYPE_CHAR    : op(char   ) ; break;\
+      case ARRAY_TYPE_SHORT   : op(short  ) ; break;\
+      case ARRAY_TYPE_INT     : op(int    ) ; break;\
+      case ARRAY_TYPE_LONG    : op(long   ) ; break;\
+      case ARRAY_TYPE_SIZE_T  : op(size_t ) ; break;\
+      case ARRAY_TYPE_FLOAT   : op(float  ) ; break;\
+      case ARRAY_TYPE_DOUBLE  : op(double ) ; break;\
+      case ARRAY_TYPE_COMPLEX : op(Complex) ; break;\
+    }
+
+static int luaC_lunum_linear(lua_State *L)
+{
+  const lua_Number  e1 = luaL_checknumber(L, 1);
+  const lua_Number  e2 = luaL_checknumber(L, 2);
+  const lua_Integer N  = luaL_checkinteger(L, 3);
+  if (N <= 0) luaL_error(L, "Invalid size %d", N);
+  const ArrayType T = (ArrayType) luaL_optinteger(L, 4, ARRAY_TYPE_DOUBLE);
+
+  Array A = array_new_zeros(N, T);
+  void *a = A.data;
+  
+  ARRAY_ASSIGN_OP(T, EXPR_ASSIGN_LINEAR);
+  
+  lunum_pusharray1(L, &A);
   
   return 1;
 }
@@ -957,7 +994,7 @@ static int luaC_lunum_loadtxt(lua_State *L)
 
     if (ncols == 0) ncols = nvals;
     if (ncols != nvals) {
-      luaL_error(L, "wrong number of data on line %lu of %s", nline, fname);
+      luaL_error(L, "wrong number of data on line %d of %s", nline, fname);
     }
 
     data = (double*) realloc(data, (ntot+=nvals)*sizeof(double));
@@ -1079,7 +1116,7 @@ size_t _get_index(lua_State *L, Array *A, int *success)
   if (m = lua_tointegerx(L, 2, success), *success) {
 
     if (m >= A->size) {
-      luaL_error(L, "index %ld out of bounds on array of length %lu", m, A->size);
+      luaL_error(L, "index %d out of bounds on array of length %d", m, A->size);
     }
   }
   else if (lua_istable(L, 2)) {
@@ -1096,7 +1133,7 @@ size_t _get_index(lua_State *L, Array *A, int *success)
       const size_t i = lua_tointegerx(L, -1, success);
       lua_pop(L, 1);
       if (i >= A->shape[d]) {
-        luaL_error(L, "array indexed out of bounds (%lu) on dimension %d of size %lu",
+        luaL_error(L, "array indexed out of bounds (%d) on dimension %d of size %d",
                    i, d, A->shape[d]);
       } else if ( !(*success) ) { return m; }
       m = m * A->shape[d] + i;
