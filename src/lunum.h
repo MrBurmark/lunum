@@ -28,6 +28,6 @@ void          lunum_pusharray2(lua_State *L, void *data, ArrayType T, size_t N);
 void          lunum_astable(lua_State *L, int pos);
 int           lunum_upcast(lua_State *L, int pos, ArrayType T, size_t N);
 int           lunum_hasmetatable(lua_State *L, int pos, const char *name);
-void          lunum_tovalue(lua_State *L, ArrayType T, ArrayAllNum *num);
+void          lunum_tovalue(lua_State *L, ArrayType T, void *num);
 
 #endif // __NumluaCapi_HEADER__

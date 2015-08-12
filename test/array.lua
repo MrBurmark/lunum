@@ -104,7 +104,7 @@ local function test1()
                                     astable=false, astype=false, tofile=false, max=false, imag=false, 
                                     eq=false, min=false, copy=false, real=false, indices=false, ne=false,
                                     resize=false, setasflat=false, reshape=false, gt=false, ge=false, 
-                                    le=false, conj=false, lt=false}
+                                    le=false, conj=false, lt=false, __preserve=false}
 
    local expected_metastrings = {__name=false}
 
@@ -123,6 +123,35 @@ local function test1()
 
    check_table_true(expected_metafunctions)
    check_table_true(expected_metastrings)
+
+
+   -- check complex metatable
+   local C = lunum.I;
+
+   assert(type(C) == 'userdata')
+
+   local expected_complex_metafunctions = {__div=false, __add=false, __sub=false, __unm=false, __pow=false,
+                                    __mul=false, __tostring=false, __eq=false, __lt=false, __le=false,
+                                    new=false, __preserve=false}
+
+   local expected_complex_metastrings = {__name=false}
+
+   for k,v in pairs(getmetatable(C)) do
+      if (expected_complex_metafunctions[k] == false) then
+         assert(type(v) == 'function')
+         expected_complex_metafunctions[k] = true
+      elseif (expected_complex_metastrings[k] == false) then
+         assert(type(v) == 'string')
+         expected_complex_metastrings[k] = true
+      else
+         print('Unknown pair in complex metatable', k, v)
+         assert(false)
+      end
+   end
+
+   check_table_true(expected_complex_metafunctions)
+   check_table_true(expected_complex_metastrings)
+
 
    -- check lunum table
    local expected_functions = {tanh=false, atanh=false, __register_array_metafunctions=false, 

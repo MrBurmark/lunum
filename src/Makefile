@@ -5,7 +5,7 @@ LUA = $(LUA_HOME)/bin/lua
 default : $(LUNUM_A) $(LUNUM_SO)
 
 %.o : %.c
-	$(CC) $(CFLAGS) -std=c99 -c $<
+	$(CC) $(CFLAGS) -std=c99 -c $< -I$(LUA_HOME)/include
 
 array_class.lc : array_class.lua
 	$(LUA) bin2c.lua +$< > $@

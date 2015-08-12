@@ -182,11 +182,6 @@ Returns a deep-copy of the array.
 
 Same as lunum.resize(A, newshape). Changes the array `A` in-place.
 
-### array:transpose()
-***
-
-Same as lunum.transpose(A). Returns the transpose of array `A`.
-If `A` is 1-dimensional, returns a copy of `A`.
 
 ### array:reshape(newshape)
 ***
@@ -244,7 +239,7 @@ format.
 
 ## Lunum functions
 
-### lunum.array(tab, [dtype])
+### lunum.array(table, [dtype], [shape])
 ***
 
 Returns a new array from the table `tab` of type `dtype`. Default is
@@ -282,6 +277,12 @@ Lunum math library function call. Accepts as arguments Lunum arrays,
 or single numbers of all data types. Overloaded for complex values by
 calling the appropriate functions in the C math library. All
 functions in the C math library are provided.
+
+### lunum.transpose(A)
+***
+
+Returns the transpose of array `A`.
+If `A` is 1-dimensional, returns a copy of `A`.
 
 ### lunum.loadtxt(fname)
 ***

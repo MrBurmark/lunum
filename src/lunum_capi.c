@@ -43,10 +43,8 @@ void lunum_astable(lua_State *L, int pos)
   Array *A = lunum_checkarray1(L, pos);
   const void *a = A->data;
 
-  lua_newtable(L);
-  for (size_t i=0; i<A->size; ++i) {
-
-    lua_pushinteger(L, i+1);
+  lua_createtable(L, A->size, 0);
+  for (size_t i=0; i < A->size; ++i) {
 
     switch (A->dtype) {
       case ARRAY_TYPE_BOOL    : lua_pushboolean  (L, ((Bool    *)a)[i]); break;
@@ -60,7 +58,7 @@ void lunum_astable(lua_State *L, int pos)
       case ARRAY_TYPE_COMPLEX : lunum_pushcomplex(L, ((Complex *)a)[i]); break;
     }
 
-    lua_settable(L, -3);
+    lua_seti(L, -2, i+1);
   }
 }
 
@@ -185,35 +183,37 @@ int lunum_hasmetatable(lua_State *L, int pos, const char *name)
   return eq;
 }
 
-#define REASSIGN_FROM(x) \
+#define ASSIGN_TO_VOID(T, n, x) \
     switch (T) {\
-      case ARRAY_TYPE_BOOL    : (*num).b = (Bool)   (x); break;\
-      case ARRAY_TYPE_CHAR    : (*num).c = (char)   (x); break;\
-      case ARRAY_TYPE_SHORT   : (*num).s = (short)  (x); break;\
-      case ARRAY_TYPE_INT     : (*num).i = (int)    (x); break;\
-      case ARRAY_TYPE_LONG    : (*num).l = (long)   (x); break;\
-      case ARRAY_TYPE_SIZE_T  : (*num).t = (size_t) (x); break;\
-      case ARRAY_TYPE_FLOAT   : (*num).f = (float)  (x); break;\
-      case ARRAY_TYPE_DOUBLE  : (*num).d = (double) (x); break;\
-      case ARRAY_TYPE_COMPLEX : (*num).z = (Complex)(x); break;\
+      case ARRAY_TYPE_BOOL    : *((Bool    *)n) = (Bool)   (x); break;\
+      case ARRAY_TYPE_CHAR    : *((char    *)n) = (char)   (x); break;\
+      case ARRAY_TYPE_SHORT   : *((short   *)n) = (short)  (x); break;\
+      case ARRAY_TYPE_INT     : *((int     *)n) = (int)    (x); break;\
+      case ARRAY_TYPE_LONG    : *((long    *)n) = (long)   (x); break;\
+      case ARRAY_TYPE_SIZE_T  : *((size_t  *)n) = (size_t) (x); break;\
+      case ARRAY_TYPE_FLOAT   : *((float   *)n) = (float)  (x); break;\
+      case ARRAY_TYPE_DOUBLE  : *((double  *)n) = (double) (x); break;\
+      case ARRAY_TYPE_COMPLEX : *((Complex *)n) = (Complex)(x); break;\
     }
 
-void lunum_tovalue(lua_State *L, ArrayType T, ArrayAllNum *num)
+void lunum_tovalue(lua_State *L, ArrayType T, void *num)
 {
   int isnum;
 
-  if ((*num).li = lua_tointegerx(L, -1, &isnum), isnum) {
-    REASSIGN_FROM((*num).li);
-  } else if ((*num).ln = lua_tonumberx(L, -1, &isnum), isnum) {
-    REASSIGN_FROM((*num).ln);
+  ArrayAllNum tmp_num;
+
+  if (tmp_num.li = lua_tointegerx(L, -1, &isnum), isnum) {
+    ASSIGN_TO_VOID(T, num, tmp_num.li);
+  } else if (tmp_num.ln = lua_tonumberx(L, -1, &isnum), isnum) {
+    ASSIGN_TO_VOID(T, num, tmp_num.ln);
   }
   else if (lua_isboolean(L, -1)) {
-    (*num).b = lua_toboolean(L, -1);
-    REASSIGN_FROM((*num).b);
+    tmp_num.b = lua_toboolean(L, -1);
+    ASSIGN_TO_VOID(T, num, tmp_num.b);
   }
   else if (lunum_hasmetatable(L, -1, "complex")) {
-    (*num).z = *((Complex*) lua_touserdata(L, -1));
-    REASSIGN_FROM((*num).z);
+    tmp_num.z = *((Complex*) lua_touserdata(L, -1));
+    ASSIGN_TO_VOID(T, num, tmp_num.z);
   }
   else {
     luaL_error(L, "unkown data type");

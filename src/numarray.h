@@ -29,7 +29,11 @@ typedef union {
   size_t t;
   float f;
   double d;
+#ifndef LUNUM_API_NOCOMPLEX
   Complex z;
+#else
+  double z[2];
+#endif
   lua_Integer li;
   lua_Number ln;
 } ArrayAllNum;

@@ -100,8 +100,10 @@ static int luaC_array__bxor(lua_State *L);
 static int luaC_array__shl(lua_State *L);
 static int luaC_array__shr(lua_State *L);
 static int luaC_array__gc(lua_State *L);
+static int luaC_array__preserve(lua_State *L);
 
 
+static int luaC_complex_new(lua_State *L);
 static int luaC_complex__tostring(lua_State *L);
 static int luaC_complex__add(lua_State *L);
 static int luaC_complex__sub(lua_State *L);
@@ -112,6 +114,7 @@ static int luaC_complex__unm(lua_State *L);
 static int luaC_complex__eq(lua_State *L);
 static int luaC_complex__lt(lua_State *L);
 static int luaC_complex__le(lua_State *L);
+static int luaC_complex__preserve(lua_State *L);
 
 
 static int _array_unary_op(lua_State *L, ArrayUnaryOperation op);
@@ -154,6 +157,7 @@ int luaopen_lunum(lua_State *L)
   LUA_NEW_METAMETHOD(L, array, unm);
   LUA_NEW_METAMETHOD(L, array, bnot);
   LUA_NEW_METAMETHOD(L, array, gc);
+  LUA_NEW_METAMETHOD(L, array, preserve);
 
   LUA_NEW_METAFUNCTION(L, array, dtype);
   LUA_NEW_METAFUNCTION(L, array, dtypemin);
@@ -178,6 +182,9 @@ int luaopen_lunum(lua_State *L)
   LUA_NEW_METAMETHOD(L, complex, eq);
   LUA_NEW_METAMETHOD(L, complex, lt);
   LUA_NEW_METAMETHOD(L, complex, le);
+  LUA_NEW_METAMETHOD(L, complex, preserve);
+
+  LUA_NEW_METAFUNCTION(L, complex, new);
   lua_pop(L, 1);
 
 
@@ -390,6 +397,26 @@ static int luaC_array__newindex(lua_State *L)
   return 0;
 }
 
+static int luaC_array__preserve(lua_State *L)
+{
+  Array *A = lunum_checkarray1(L, 1);
+
+  lua_getglobal(L, "lunum");
+  lua_getfield(L, -1, "array");
+
+  lunum_astable(L, 1);
+
+  lua_pushinteger(L, A->dtype);
+
+  lua_createtable(L, A->ndims, 0);
+  for (int d = 0; d < A->ndims; d++) {
+    lua_pushinteger(L, A->shape[d]);
+    lua_seti(L, -2, d+1);
+  }
+
+  return 4;
+}
+
 static int luaC_array__add(lua_State *L)  { return _array_binary_op(L, ARRAY_OP_ADD); }
 static int luaC_array__sub(lua_State *L)  { return _array_binary_op(L, ARRAY_OP_SUB); }
 static int luaC_array__mul(lua_State *L)  { return _array_binary_op(L, ARRAY_OP_MUL); }
@@ -576,6 +603,14 @@ static int _array_array_binary_op(lua_State *L, ArrayBinaryOperation op)
 // Implementation of lunum.complex metatable
 //
 // *****************************************************************************
+static int luaC_complex_new(lua_State *L)
+{
+  Complex *z = (Complex*) lua_newuserdata(L, sizeof(Complex));
+  *z = luaL_checknumber(L, 1) + I * luaL_checknumber(L, 2);
+  luaL_setmetatable(L, "complex");
+  return 1;
+}
+
 static int luaC_complex__tostring(lua_State *L)
 {
   Complex z = *((Complex*) luaL_checkudata(L, 1, "complex"));
@@ -584,6 +619,17 @@ static int luaC_complex__tostring(lua_State *L)
   return 1;
 }
 
+static int luaC_complex__preserve(lua_State *L)
+{
+  Complex z = *((Complex*) luaL_checkudata(L, 1, "complex"));
+  
+  luaL_getmetafield(L, 1, "new");
+
+  lua_pushnumber(L, creal(z));
+  lua_pushnumber(L, cimag(z));
+
+  return 3;
+}
 
 
 static int luaC_complex__add(lua_State *L) { return _complex_binary_op1(L, ARRAY_OP_ADD); }
@@ -689,6 +735,11 @@ static int luaC_lunum_array(lua_State *L)
   else {
     const ArrayType T = (ArrayType) luaL_optinteger(L, 2, ARRAY_TYPE_DOUBLE);
     lunum_upcast(L, 1, T, 1);
+  }
+  lua_replace(L, 1); /* place array at bottom of stack */
+  if (!lua_isnone(L, 2)) lua_remove(L, 2); /* remove arg 2 if given */
+  if (lua_istable(L, 2)) {
+    luaC_lunum_resize(L); /* reshape array to third arg if given */
   }
   return 1;
 }
