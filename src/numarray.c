@@ -11,7 +11,7 @@
 
 #define EXPR_UNM(Ta, Tb) {for(size_t i=0;i<N;++i)((Tb*)b)[i]=-((Ta*)a)[i];}
 #define EXPR_BNOT(Ta, Tb) {for(size_t i=0;i<N;++i)((Tb*)b)[i]=~((Ta*)a)[i];}
-#define EXPR_ERR_UNARY(Ta, Tb) {luaL_error(L, "Invalid operation");}
+#define EXPR_ERR_UNARY(Ta, Tb) {luaL_error(L, "Invalid operation"); return;}
 
 #define EXPR_AN_ADD(Ta, Tb, Tc) {\
   if (array_first) {\
@@ -126,7 +126,7 @@
 #define EXPR_AA_BXOR(Ta, Tb, Tc) {for(size_t i=0;i<N;++i)((Tc*)c)[i]=((Ta*)a)[i]^((Tb*)b)[i];}
 #define EXPR_AA_SHL(Ta, Tb, Tc) {for(size_t i=0;i<N;++i)((Tc*)c)[i]=((Ta*)a)[i]<<((Tb*)b)[i];}
 #define EXPR_AA_SHR(Ta, Tb, Tc) {for(size_t i=0;i<N;++i)((Tc*)c)[i]=((Ta*)a)[i]>>((Tb*)b)[i];}
-#define EXPR_ERR_BINARY(Ta, Tb, Tc) {luaL_error(L, "Invalid operation");}
+#define EXPR_ERR_BINARY(Ta, Tb, Tc) {luaL_error(L, "Invalid operation"); return;}
 
 #define GET_TC(op, Ta, Tb) {\
   if (outA) {\

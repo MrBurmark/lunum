@@ -324,7 +324,7 @@ static int luaC_array__call(lua_State *L)
   const int nind = lua_gettop(L) - 1;
 
   if (nind != A->ndims) {
-    luaL_error(L, "wrong number of indices (%d) for array of dimension %d",
+    return luaL_error(L, "wrong number of indices (%d) for array of dimension %d",
                nind, A->ndims);
     return 0;
   }
@@ -334,9 +334,11 @@ static int luaC_array__call(lua_State *L)
   for (int d=0; d < nind; ++d) {
     const size_t i = lua_tointegerx(L, d+2, &isnum);
     if (i >= A->shape[d]) {
-      luaL_error(L, "array indexed out of bounds (%d) on dimension %d of size %d",
+      return luaL_error(L, "array indexed out of bounds (%d) on dimension %d of size %d",
                  i, d, A->shape[d]);
-    } else if (!isnum) luaL_error(L, "non-integer index encountered");
+    } else if (!isnum) {
+      return luaL_error(L, "non-integer index encountered");
+    }
     m = m * A->shape[d] + i;
   }
   _push_value(L, A->dtype, (char*)A->data + m*array_sizeof(A->dtype));
@@ -356,7 +358,7 @@ static int luaC_array__index(lua_State *L)
   if (lunum_hasmetatable(L, 2, "array")) {
     Array *M = lunum_checkarray1(L, 2);
     if (M->dtype != ARRAY_TYPE_BOOL) {
-      luaL_error(L, "index array must be of type bool");
+      return luaL_error(L, "index array must be of type bool");
     }
     Array B = array_new_from_mask(A, M);
     lunum_pusharray1(L, &B);
@@ -580,11 +582,11 @@ static int _array_array_binary_op(lua_State *L, ArrayBinaryOperation op)
 
   /* check size and dimensions */
   if (A->ndims != B->ndims) {
-    luaL_error(L, "arrays have different dimensions");
+    return luaL_error(L, "arrays have different dimensions");
   }
   for (int d=0; d<A->ndims; ++d) {
     if (A->shape[d] != B->shape[d]) {
-      luaL_error(L, "arrays shapes do not agree");
+      return luaL_error(L, "arrays shapes do not agree");
     }
   }
 
@@ -715,7 +717,7 @@ static int _complex_binary_op2(lua_State *L, ArrayBinaryOperation op)
     case ARRAY_OP_BOR:
     case ARRAY_OP_BXOR:
     case ARRAY_OP_SHL:
-    case ARRAY_OP_SHR: luaL_error(L, "Invalid operation"); break;
+    case ARRAY_OP_SHR: { return luaL_error(L, "Invalid operation"); break; }
   }
 
   return 1;
@@ -750,7 +752,7 @@ static int luaC_lunum_zeros(lua_State *L)
 {
   if (lua_isnumber(L, 1)) {
     const lua_Integer N = luaL_checkinteger(L, 1);
-    if (N <= 0) luaL_error(L, "Invalid size %d", N);
+    if (N <= 0) { return luaL_error(L, "Invalid size %d", N); }
     const ArrayType T = (ArrayType) luaL_optinteger(L, 2, ARRAY_TYPE_DOUBLE);
     Array A = array_new_zeros(N, T);
     lunum_pusharray1(L, &A);
@@ -773,15 +775,14 @@ static int luaC_lunum_zeros(lua_State *L)
     return 1;
   }
   else {
-    luaL_error(L, "argument must be either number, table, or array");
-    return 0;
+    return luaL_error(L, "argument must be either number, table, or array");
   }
 }
 
 static int luaC_lunum_range(lua_State *L)
 {
   const lua_Integer N = luaL_checkinteger(L, 1);
-  if (N <= 0) luaL_error(L, "Invalid size %d", N);
+  if (N <= 0) { return luaL_error(L, "Invalid size %d", N); }
   if (N <= INT_MAX) {
     Array A = array_new_zeros(N, ARRAY_TYPE_INT);
     lunum_pusharray1(L, &A);
@@ -819,7 +820,7 @@ static int luaC_lunum_linear(lua_State *L)
   const lua_Number  e1 = luaL_checknumber(L, 1);
   const lua_Number  e2 = luaL_checknumber(L, 2);
   const lua_Integer N  = luaL_checkinteger(L, 3);
-  if (N <= 1) luaL_error(L, "Invalid size %d", N);
+  if (N <= 1) { return luaL_error(L, "Invalid size %d", N); }
   const ArrayType T = (ArrayType) luaL_optinteger(L, 4, ARRAY_TYPE_DOUBLE);
 
   Array A = array_new_zeros(N, T);
@@ -843,8 +844,7 @@ static int luaC_lunum_resize(lua_State *L)
   for (int d=0; d<Nd; ++d) ntot *= N[d];
 
   if (A->size != ntot) {
-    luaL_error(L, "new and old total sizes do not agree");
-    return 0;
+    return luaL_error(L, "new and old total sizes do not agree");
   }
   array_resize_t(A, N, Nd);
 
@@ -885,12 +885,12 @@ static int luaC_lunum_slice(lua_State *L)
 
 
   if (Nd0 != A->ndims || Nd1 != A->ndims || Nd2 != A->ndims || Nd3 != A->ndims) {
-    luaL_error(L, "slice has wrong number of dimensions for array");
+    return luaL_error(L, "slice has wrong number of dimensions for array");
   }
 
   for (int d=0; d<A->ndims; ++d) {
     if (start[d] < 0 || stop[d] > A->shape[d]) {
-      luaL_error(L, "slice not within array extent");
+      return luaL_error(L, "slice not within array extent");
     }
   }
   Array B = array_new_from_slice(A, start, stop, skip, Nd0);
@@ -966,7 +966,7 @@ static int luaC_lunum_loadtxt(lua_State *L)
   FILE *input = fopen(fname, "r");
 
   if (input == NULL) {
-    luaL_error(L, "no such file %s", fname);
+    return luaL_error(L, "no such file %s", fname);
   }
 
   size_t nline = 0;
@@ -994,7 +994,7 @@ static int luaC_lunum_loadtxt(lua_State *L)
 
     if (ncols == 0) ncols = nvals;
     if (ncols != nvals) {
-      luaL_error(L, "wrong number of data on line %d of %s", nline, fname);
+      return luaL_error(L, "wrong number of data on line %d of %s", nline, fname);
     }
 
     data = (double*) realloc(data, (ntot+=nvals)*sizeof(double));
@@ -1029,13 +1029,13 @@ static int luaC_lunum_fromfile(lua_State *L)
   FILE *input = fopen(fname, "rb");
 
   if (input == NULL) {
-    luaL_error(L, "no such file %s", fname);
+    return luaL_error(L, "no such file %s", fname);
   }
   fseek(input, 0L, SEEK_END); const size_t sz = ftell(input);
   fseek(input, 0L, SEEK_SET);
 
   if (sz % sizeof_T != 0) {
-    luaL_error(L, "file size must be a multiple of the data type size");
+    return luaL_error(L, "file size must be a multiple of the data type size");
   }
   const size_t N = sz / sizeof_T;
   Array A = array_new_zeros(N, T);
@@ -1063,7 +1063,7 @@ void _unary_func(lua_State *L, double(*f)(double), Complex(*g)(Complex), int cas
   else if (lunum_hasmetatable(L, 1, "complex")) {
 
     if (g == NULL) {
-      luaL_error(L, "complex operation not supported");
+      return luaL_error(L, "complex operation not supported");
     }
 
     const Complex z = lunum_checkcomplex(L, 1);
@@ -1098,7 +1098,7 @@ void _unary_func(lua_State *L, double(*f)(double), Complex(*g)(Complex), int cas
     else if (A->dtype == ARRAY_TYPE_COMPLEX) {
 
       if (g == NULL) {
-        luaL_error(L, "complex operation not supported");
+        return luaL_error(L, "complex operation not supported");
       }
 
       Array B = array_new_copy(A, ARRAY_TYPE_COMPLEX);
@@ -1116,7 +1116,7 @@ size_t _get_index(lua_State *L, Array *A, int *success)
   if (m = lua_tointegerx(L, 2, success), *success) {
 
     if (m >= A->size) {
-      luaL_error(L, "index %d out of bounds on array of length %d", m, A->size);
+      return luaL_error(L, "index %d out of bounds on array of length %d", m, A->size);
     }
   }
   else if (lua_istable(L, 2)) {
@@ -1124,7 +1124,7 @@ size_t _get_index(lua_State *L, Array *A, int *success)
     const int nind = luaL_len(L, 2);
 
     if (A->ndims != nind) {
-      luaL_error(L, "wrong number of indices (%d) on array of dimension %d",
+      return luaL_error(L, "wrong number of indices (%d) on array of dimension %d",
                  nind, A->ndims);
     }
 
@@ -1133,7 +1133,7 @@ size_t _get_index(lua_State *L, Array *A, int *success)
       const size_t i = lua_tointegerx(L, -1, success);
       lua_pop(L, 1);
       if (i >= A->shape[d]) {
-        luaL_error(L, "array indexed out of bounds (%d) on dimension %d of size %d",
+        return luaL_error(L, "array indexed out of bounds (%d) on dimension %d of size %d",
                    i, d, A->shape[d]);
       } else if ( !(*success) ) { return m; }
       m = m * A->shape[d] + i;
@@ -1270,7 +1270,7 @@ int luaC_array_tofile(lua_State *L)
   FILE *output = fopen(fname, "wb");
 
   if (output == NULL) {
-    luaL_error(L, "could not create file %s", fname);
+    return luaL_error(L, "could not create file %s", fname);
   }
   fwrite(A->data, A->size, array_sizeof(A->dtype), output);
   fclose(output);

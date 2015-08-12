@@ -88,7 +88,7 @@ int lunum_upcast(lua_State *L, int pos, ArrayType T, size_t N)
 // -----------------------------------------------------------------------------
 {
   if (array_typename(T) == NULL) {
-    luaL_error(L, "invalid array type");
+    return luaL_error(L, "invalid array type");
   }
 
   // Deal with lunum.array
@@ -166,9 +166,8 @@ int lunum_upcast(lua_State *L, int pos, ArrayType T, size_t N)
   // Throw an error
   // ---------------------------------------------------------------------------
   else {
-    luaL_error(L, "cannot cast to array from object of dtype %s\n",
+    return luaL_error(L, "cannot cast to array from object of dtype %s\n",
                lua_typename(L, lua_type(L, pos)));
-    return 0;
   }
 }
 
