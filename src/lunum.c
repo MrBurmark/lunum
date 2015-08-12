@@ -819,7 +819,7 @@ static int luaC_lunum_linear(lua_State *L)
   const lua_Number  e1 = luaL_checknumber(L, 1);
   const lua_Number  e2 = luaL_checknumber(L, 2);
   const lua_Integer N  = luaL_checkinteger(L, 3);
-  if (N <= 0) luaL_error(L, "Invalid size %d", N);
+  if (N <= 1) luaL_error(L, "Invalid size %d", N);
   const ArrayType T = (ArrayType) luaL_optinteger(L, 4, ARRAY_TYPE_DOUBLE);
 
   Array A = array_new_zeros(N, T);

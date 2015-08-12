@@ -255,6 +255,11 @@ Returns a new array with `N` elements, initialized to zero, of type
 ***
 Returns the integer array `[0,1,...N-1]`
 
+### lunum.linear(num1, num2, N, [dtype])
+***
+Returns the array with N elements initialized to numbers evenly spaced
+from num1 to num2 of type `dtype`. Default is double precision.
+
 ### lunum.resize(A, newshape)
 ***
 
