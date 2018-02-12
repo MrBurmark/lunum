@@ -12,7 +12,8 @@ void lunum_pusharray1(lua_State *L, Array *B)
   Array *A = (Array*) lua_newuserdata(L, sizeof(Array));
   *A = *B;
 
-  luaL_setmetatable(L, "array");
+  luaL_getmetatable(L, "array");
+  lua_setmetatable(L, -2);
 }
 
 void lunum_pusharray2(lua_State *L, void *data, ArrayType T, size_t N)
@@ -46,6 +47,7 @@ void lunum_astable(lua_State *L, int pos)
   lua_createtable(L, A->size, 0);
   for (size_t i=0; i < A->size; ++i) {
 
+    lua_pushinteger(L, i+1);
     switch (A->dtype) {
       case ARRAY_TYPE_BOOL    : lua_pushboolean  (L, ((Bool    *)a)[i]); break;
       case ARRAY_TYPE_CHAR    : lua_pushinteger  (L, ((char    *)a)[i]); break;
@@ -58,14 +60,15 @@ void lunum_astable(lua_State *L, int pos)
       case ARRAY_TYPE_COMPLEX : lunum_pushcomplex(L, ((Complex *)a)[i]); break;
     }
 
-    lua_seti(L, -2, i+1);
+    lua_settable(L, -3);
   }
 }
 
 void lunum_pushcomplex(lua_State *L, Complex z)
 {
   Complex *w = (Complex*) lua_newuserdata(L, sizeof(Complex));
-  luaL_setmetatable(L, "complex");
+  luaL_getmetatable(L, "complex");
+  lua_setmetatable(L, -2);
   *w = z;
 }
 
@@ -113,11 +116,12 @@ int lunum_upcast(lua_State *L, int pos, ArrayType T, size_t N)
   // ---------------------------------------------------------------------------
   else if (lua_istable(L, pos)) {
 
-    Array A = array_new_zeros(lua_rawlen(L, pos), T);
+    Array A = array_new_zeros(lua_objlen(L, pos), T);
 
     for (size_t i=0; i<A.size; ++i) {
 
-      lua_geti(L, pos, i+1);
+      lua_pushinteger(L, i+1);
+      lua_gettable(L, pos);
 
       ArrayAllNum val;
       lunum_tovalue(L, T, &val);
@@ -197,18 +201,14 @@ int lunum_hasmetatable(lua_State *L, int pos, const char *name)
 
 void lunum_tovalue(lua_State *L, ArrayType T, void *num)
 {
-  int isnum;
-
   ArrayAllNum tmp_num;
 
-  if (tmp_num.li = lua_tointegerx(L, -1, &isnum), isnum) {
-    ASSIGN_TO_VOID(T, num, tmp_num.li);
-  } else if (tmp_num.ln = lua_tonumberx(L, -1, &isnum), isnum) {
-    ASSIGN_TO_VOID(T, num, tmp_num.ln);
-  }
-  else if (lua_isboolean(L, -1)) {
+  if (lua_isboolean(L, -1)) {
     tmp_num.b = lua_toboolean(L, -1);
     ASSIGN_TO_VOID(T, num, tmp_num.b);
+  } else if (lua_isnumber(L, -1)) {
+    tmp_num.ln = lua_tonumber(L, -1);
+    ASSIGN_TO_VOID(T, num, tmp_num.ln);
   }
   else if (lunum_hasmetatable(L, -1, "complex")) {
     tmp_num.z = *((Complex*) lua_touserdata(L, -1));

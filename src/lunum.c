@@ -139,6 +139,8 @@ int luaopen_lunum(lua_State *L)
   // Create the 'array' metatable
   // ---------------------------------------------------------------------------
   luaL_newmetatable(L, "array");
+  lua_pushliteral(L, "array");
+  lua_setfield(L, -2, "__name");
   LUA_NEW_METAMETHOD(L, array, tostring);
   LUA_NEW_METAMETHOD(L, array, call);
   LUA_NEW_METAMETHOD(L, array, index);
@@ -173,6 +175,8 @@ int luaopen_lunum(lua_State *L)
   // Create the 'complex' metatable
   // ---------------------------------------------------------------------------
   luaL_newmetatable(L, "complex");
+  lua_pushliteral(L, "complex");
+  lua_setfield(L, -2, "__name");
   LUA_NEW_METAMETHOD(L, complex, tostring);
   LUA_NEW_METAMETHOD(L, complex, add);
   LUA_NEW_METAMETHOD(L, complex, sub);
@@ -329,15 +333,12 @@ static int luaC_array__call(lua_State *L)
     return 0;
   }
 
-  int isnum;
   size_t m = 0;
   for (int d=0; d < nind; ++d) {
-    const size_t i = lua_tointegerx(L, d+2, &isnum);
+    const size_t i = luaL_checkinteger(L, d+2);
     if (i >= A->shape[d]) {
       return luaL_error(L, "array indexed out of bounds (%d) on dimension %d of size %d",
                  i, d, A->shape[d]);
-    } else if (!isnum) {
-      return luaL_error(L, "non-integer index encountered");
     }
     m = m * A->shape[d] + i;
   }
@@ -376,7 +377,8 @@ static int luaC_array__index(lua_State *L)
   /* check metatable */
   lua_getmetatable(L, 1);
   lua_pushvalue(L, 2);
-  if (lua_gettable(L, -2) != LUA_TNIL) {
+  lua_gettable(L, -2);
+  if (!lua_isnil(L, -1)) {
     return 1;
   }
 
@@ -414,8 +416,9 @@ static int luaC_array__preserve(lua_State *L)
 
   lua_createtable(L, A->ndims, 0);
   for (int d = 0; d < A->ndims; d++) {
+    lua_pushinteger(L, d+1);
     lua_pushinteger(L, A->shape[d]);
-    lua_seti(L, -2, d+1);
+    lua_settable(L, -3);
   }
 
   return 4;
@@ -494,12 +497,8 @@ static int _array_number_binary_op(lua_State *L, ArrayBinaryOperation op, Bool a
     float f;
     double d;
     Complex z;
-    lua_Integer li;
     lua_Number ln;
   } num;
-
-  /* to force integer conversion if possible */
-  int isnum;
 
   if (lua_isboolean(L, num_pos)) {
     num.i = lua_toboolean(L, num_pos);
@@ -516,28 +515,8 @@ static int _array_number_binary_op(lua_State *L, ArrayBinaryOperation op, Bool a
       case ARRAY_TYPE_COMPLEX : num.z = (Complex)num.i; break;
     }
   }
-  else if (num.li = lua_tointegerx(L, num_pos, &isnum), isnum) {
-    /* already assigned above */
-    if (T >= ARRAY_TYPE_LONG) {
-      /* A has higher type */
-    } else {
-      /* number has higher type */
-      T = ARRAY_TYPE_LONG;
-    }
-    /* upgrade to type T */
-    switch (T) {
-      case ARRAY_TYPE_BOOL    : num.b = (Bool)num.li;    break;
-      case ARRAY_TYPE_CHAR    : num.c = (char)num.li;    break;
-      case ARRAY_TYPE_SHORT   : num.s = (short)num.li;   break;
-      case ARRAY_TYPE_INT     : num.i = (int)num.li;     break;
-      case ARRAY_TYPE_LONG    : num.l = (long)num.li;    break;
-      case ARRAY_TYPE_SIZE_T  : num.t = (size_t)num.li;  break;
-      case ARRAY_TYPE_FLOAT   : num.f = (float)num.li;   break;
-      case ARRAY_TYPE_DOUBLE  : num.d = (double)num.li;  break;
-      case ARRAY_TYPE_COMPLEX : num.z = (Complex)num.li; break;
-    }
-  }
-  else if (num.ln = lua_tonumberx(L, num_pos, &isnum), isnum) {
+  else if (lua_isnumber(L, num_pos)) {
+    num.ln = lua_tonumber(L, num_pos);
     /* already assigned above */
     if (T >= ARRAY_TYPE_DOUBLE) {
       /* A has higher type */
@@ -611,7 +590,8 @@ static int luaC_complex_new(lua_State *L)
 {
   Complex *z = (Complex*) lua_newuserdata(L, sizeof(Complex));
   *z = luaL_checknumber(L, 1) + I * luaL_checknumber(L, 2);
-  luaL_setmetatable(L, "complex");
+  luaL_getmetatable(L, "complex");
+  lua_setmetatable(L, -2);
   return 1;
 }
 
@@ -626,7 +606,7 @@ static int luaC_complex__tostring(lua_State *L)
 static int luaC_complex__preserve(lua_State *L)
 {
   Complex z = *((Complex*) luaL_checkudata(L, 1, "complex"));
-  
+
   luaL_getmetafield(L, 1, "new");
 
   lua_pushnumber(L, creal(z));
@@ -641,10 +621,11 @@ static int luaC_complex__sub(lua_State *L) { return _complex_binary_op1(L, ARRAY
 static int luaC_complex__mul(lua_State *L) { return _complex_binary_op1(L, ARRAY_OP_MUL); }
 static int luaC_complex__div(lua_State *L) { return _complex_binary_op1(L, ARRAY_OP_DIV); }
 static int luaC_complex__pow(lua_State *L) { return _complex_binary_op1(L, ARRAY_OP_POW); }
-static int luaC_complex__unm(lua_State *L) { 
+static int luaC_complex__unm(lua_State *L) {
   Complex v = *((Complex*) luaL_checkudata(L, 1, "complex"));
   Complex *z = (Complex*) lua_newuserdata(L, sizeof(Complex));
-  luaL_setmetatable(L, "complex");
+  luaL_getmetatable(L, "complex");
+  lua_setmetatable(L, -2);
   *z = -v;
   return(1);
 }
@@ -703,7 +684,8 @@ static int _complex_binary_op2(lua_State *L, ArrayBinaryOperation op)
   Complex w = *((Complex*) luaL_checkudata(L, 2, "complex"));
 
   Complex *z = (Complex*) lua_newuserdata(L, sizeof(Complex));
-  luaL_setmetatable(L, "complex");
+  luaL_getmetatable(L, "complex");
+  lua_setmetatable(L, -2);
 
   switch (op) {
     case ARRAY_OP_ADD: *z = v + w; break;
@@ -744,6 +726,7 @@ static int luaC_lunum_array(lua_State *L)
   if (!lua_isnone(L, 2)) lua_remove(L, 2); /* remove arg 2 if given */
   if (lua_istable(L, 2)) {
     luaC_lunum_resize(L); /* reshape array to third arg if given */
+    lua_pop(L, 1); /* pop resize arg 2 */
   }
   return 1;
 }
@@ -796,7 +779,7 @@ static int luaC_lunum_range(lua_State *L)
       ((long*)A.data)[i] = i;
     }
   }
-  
+
   return 1;
 }
 
@@ -825,11 +808,11 @@ static int luaC_lunum_linear(lua_State *L)
 
   Array A = array_new_zeros(N, T);
   void *a = A.data;
-  
+
   ARRAY_ASSIGN_OP(T, EXPR_ASSIGN_LINEAR);
-  
+
   lunum_pusharray1(L, &A);
-  
+
   return 1;
 }
 
@@ -1063,7 +1046,7 @@ void _unary_func(lua_State *L, double(*f)(double), Complex(*g)(Complex), int cas
   else if (lunum_hasmetatable(L, 1, "complex")) {
 
     if (g == NULL) {
-      return luaL_error(L, "complex operation not supported");
+      luaL_error(L, "complex operation not supported");
     }
 
     const Complex z = lunum_checkcomplex(L, 1);
@@ -1098,7 +1081,7 @@ void _unary_func(lua_State *L, double(*f)(double), Complex(*g)(Complex), int cas
     else if (A->dtype == ARRAY_TYPE_COMPLEX) {
 
       if (g == NULL) {
-        return luaL_error(L, "complex operation not supported");
+        luaL_error(L, "complex operation not supported");
       }
 
       Array B = array_new_copy(A, ARRAY_TYPE_COMPLEX);
@@ -1112,8 +1095,10 @@ void _unary_func(lua_State *L, double(*f)(double), Complex(*g)(Complex), int cas
 size_t _get_index(lua_State *L, Array *A, int *success)
 {
   size_t m = 0;
+  int got_numerical_indice = 1;
 
-  if (m = lua_tointegerx(L, 2, success), *success) {
+  if (lua_isnumber(L, 2)) {
+    m = lua_tointeger(L, 2);
 
     if (m >= A->size) {
       return luaL_error(L, "index %d out of bounds on array of length %d", m, A->size);
@@ -1121,7 +1106,7 @@ size_t _get_index(lua_State *L, Array *A, int *success)
   }
   else if (lua_istable(L, 2)) {
 
-    const int nind = luaL_len(L, 2);
+    const int nind = lua_objlen(L, 2);
 
     if (A->ndims != nind) {
       return luaL_error(L, "wrong number of indices (%d) on array of dimension %d",
@@ -1129,19 +1114,24 @@ size_t _get_index(lua_State *L, Array *A, int *success)
     }
 
     for (int d=0; d < nind; ++d) {
-      lua_geti(L, 2, d+1);
-      const size_t i = lua_tointegerx(L, -1, success);
+      lua_pushinteger(L, d+1);
+      lua_gettable(L, 2);
+
+      const size_t i = luaL_checkinteger(L, -1);
       lua_pop(L, 1);
+
       if (i >= A->shape[d]) {
         return luaL_error(L, "array indexed out of bounds (%d) on dimension %d of size %d",
                    i, d, A->shape[d]);
-      } else if ( !(*success) ) { return m; }
+      }
       m = m * A->shape[d] + i;
     }
-  } else {
-    /* failure */
-    *success = 0;
   }
+  else {
+    /* failure */
+    got_numerical_indice = 0;
+  }
+  *success = got_numerical_indice;
   return m;
 }
 
