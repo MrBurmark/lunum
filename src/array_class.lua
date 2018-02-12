@@ -17,7 +17,7 @@ local function check_shapes_agree(A, B)
    end
 end
 
-function string_split(self, sSeparator, nMax, bRegexp)
+local function string_split(self, sSeparator, nMax, bRegexp)
    -- --------------------------------------------------------------------------
    -- http://lua-users.org/wiki/SplitJoin
    -- --------------------------------------------------------------------------
@@ -45,7 +45,7 @@ function string_split(self, sSeparator, nMax, bRegexp)
    return aRecord
 end
 
-function string_trim(s)
+local function string_trim(s)
    -- --------------------------------------------------------------------------
    -- http://lua-users.org/wiki/CommonFunctions
    -- from PiL2 20.4

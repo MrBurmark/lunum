@@ -65,21 +65,21 @@ local function int_typed(...)
 end
 
 -- tests for binary operations and unary operations
--- take a test name, index into the array being tested, Arrays, the array result at i and the lua restult at i
+-- take a test name, index into the array being tested, Arrays, the array result at i and the lua result at i
 -- doesn't print failure if overflow or underflow
 local function test_binary_op(name, i, A, B, aout, lout)
-   if int_typed(A, B) then
+   if int_typed(A, B, aout) then
       lout = lout >= 0 and math.floor(lout) or math.ceil(lout)
    end
    if (aout[i] ~= lout and not under_over_flow(A, B, lout) and not both_nan(aout[i], lout)) then
       if type(A) == 'userdata' and getmetatable(A).__name == 'array' and type(B) == 'userdata' and getmetatable(B).__name == 'array' then
          print('binary op failed', name, i, A:dtype(), B:dtype(), A[i], B[i], aout:dtype(), aout[i], '~=', lout)
       elseif type(A) == 'userdata' and getmetatable(A).__name == 'array' then
-         print('binary op failed', name, i, A:dtype(), B, A[i], B, aout:dtype(), aout[i], '~=', lout)
+         print('binary op failed', name, i, A:dtype(), tonumber(B) and 'number' or 'unknown', A[i], B, aout:dtype(), aout[i], '~=', lout)
       elseif type(B) == 'userdata' and getmetatable(B).__name == 'array' then
-         print('binary op failed', name, i, A, B:dtype(), A, B[i], aout:dtype(), aout[i], '~=', lout)
+         print('binary op failed', name, i, tonumber(A) and 'number' or 'unknown', B:dtype(), A, B[i], aout:dtype(), aout[i], '~=', lout)
       else
-         print('binary op failed', name, i, A, B, A, B, aout, '~=', lout)
+         print('binary op failed', name, i, tonumber(A) and 'number' or 'unknown', tonumber(B) and 'number' or 'unknown', A, B, aout:dtype(), aout[i], '~=', lout)
       end
    end
 end
@@ -103,9 +103,9 @@ local function test1()
                                     __mul=false, __shl=false, __bxor=false, __idiv=false, __bor=false,
                                     __bnot=false, __newindex=false, __tostring=false, __shr=false,
                                     dtypemin=false, dtypemax=false, dtype=false, shape=false, size=false,
-                                    astable=false, astype=false, tofile=false, max=false, imag=false, 
+                                    astable=false, astype=false, tofile=false, max=false, imag=false,
                                     eq=false, min=false, copy=false, real=false, indices=false, ne=false,
-                                    resize=false, setasflat=false, reshape=false, gt=false, ge=false, 
+                                    resize=false, setasflat=false, reshape=false, gt=false, ge=false,
                                     le=false, conj=false, lt=false, __preserve=false}
 
    local expected_metastrings = {__name=false}
@@ -156,14 +156,14 @@ local function test1()
 
 
    -- check lunum table
-   local expected_functions = {tanh=false, atanh=false, __register_array_metafunctions=false, 
-                              sinh=false, asin=false, __build_slice=false, acosh=false, zeros=false, 
+   local expected_functions = {tanh=false, atanh=false, __register_array_metafunctions=false,
+                              sinh=false, asin=false, __build_slice=false, acosh=false, zeros=false,
                               conjugate=false, array=false, resize=false, sin=false, cos=false,
                               fromfile=false, exp=false, log=false, log10=false, range=false,
                               asinh=false, apply=false, slice=false, cosh=false, acos=false,
                               transpose=false, atan=false, tan=false, loadtxt=false, linear=false}
 
-   local expected_numbers = {char=false, short=false, double=false, long=false, int=false, 
+   local expected_numbers = {char=false, short=false, double=false, long=false, int=false,
                               complex=false, size_t=false, float=false, bool=false}
 
    local expected_userdata = {I=false}
