@@ -269,11 +269,11 @@ local function test4()
    -- no testing with booleans as lua doesn't allow boolean arithmetic
    -- tests use -5 to -1, 1 to 8 to avoid division by 0, loss of float precision
    local t = {
-      lunum.array({1,2,3,4,5,6,7,8}, lunum.char),
-      lunum.array({1,2,3,4,5,6,7,8}, lunum.short),
-      lunum.array({1,2,3,4,5,6,7,8}, lunum.int),
-      lunum.array({1,2,3,4,5,6,7,8}, lunum.long),
-      lunum.array({1,2,3,4,5,6,7,8}, lunum.size_t)
+      lunum.array({ 1, 2, 3, 4, 5, 6, 7, 8}, lunum.char),
+      lunum.array({11,12,13,14,15,16,17,18}, lunum.short),
+      lunum.array({21,22,23,24,25,26,27,28}, lunum.int),
+      lunum.array({31,32,33,34,35,36,37,38}, lunum.long),
+      lunum.array({41,42,43,44,45,46,47,48}, lunum.size_t)
    }
 
    -- integer only tests
@@ -297,8 +297,8 @@ local function test4()
       end
    end
 
-   t[#t+1] = lunum.array({1,2,3,4,5,6,7,8}, lunum.float)
-   t[#t+1] = lunum.array({1,2,3,4,5,6,7,8}, lunum.double)
+   t[#t+1] = lunum.array({51,52,53,54,55,56,57,58}, lunum.float)
+   t[#t+1] = lunum.array({61,62,63,64,65,66,67,68}, lunum.double)
 
    -- real only tests
    for i = 1,#t do
@@ -313,14 +313,14 @@ local function test4()
    end
 
    local t = {
-      lunum.array({-5,-4,-3,-2,-1,1,2,3,4,5,6,7,8}, lunum.char),
-      lunum.array({-5,-4,-3,-2,-1,1,2,3,4,5,6,7,8}, lunum.short),
-      lunum.array({-5,-4,-3,-2,-1,1,2,3,4,5,6,7,8}, lunum.int),
-      lunum.array({-5,-4,-3,-2,-1,1,2,3,4,5,6,7,8}, lunum.long),
-      lunum.array({ 1, 1, 1, 1, 1,1,2,3,4,5,6,7,8}, lunum.size_t),
-      lunum.array({-5,-4,-3,-2,-1,1,2,3,4,5,6,7,8}, lunum.float),
-      lunum.array({-5,-4,-3,-2,-1,1,2,3,4,5,6,7,8}, lunum.double),
-      lunum.array({-5,-4,-3,-2,-1,1,2,3,4,5,6,7,8}, lunum.complex)
+      lunum.array({ -5, -4, -3, -2, -1,  1,  2,  3,  4,  5}, lunum.char),
+      lunum.array({-15,-14,-13,-12,-11, 11, 12, 13, 14, 15}, lunum.short),
+      lunum.array({-25,-24,-23,-22,-21, 21, 22, 23, 24, 25}, lunum.int),
+      lunum.array({-35,-34,-33,-32,-31, 31, 32, 33, 34, 35}, lunum.long),
+      lunum.array({ 36, 37, 38, 39, 40, 41, 42, 43, 44, 45}, lunum.size_t),
+      lunum.array({-55,-54,-53,-52,-51, 51, 52, 53, 54, 55}, lunum.float),
+      lunum.array({-65,-64,-63,-62,-61, 61, 62, 63, 64, 65}, lunum.double),
+      lunum.array({-75,-74,-73,-72,-71, 71, 72, 73, 74, 75}, lunum.complex)
    }
 
    -- real and complex tests
@@ -351,11 +351,11 @@ local function test5()
    -- no testing with booleans as lua doesn't allow boolean arithmetic
    -- tests use -5 to -1, 1 to 8 to avoid division by 0, loss of float precision
    local t = {
-      lunum.array({1,2,3,4,5,6,7,8}, lunum.char),
-      lunum.array({1,2,3,4,5,6,7,8}, lunum.short),
-      lunum.array({1,2,3,4,5,6,7,8}, lunum.int),
-      lunum.array({1,2,3,4,5,6,7,8}, lunum.long),
-      lunum.array({1,2,3,4,5,6,7,8}, lunum.size_t)
+      lunum.array({ 1, 2, 3, 4, 5, 6, 7, 8}, lunum.char),
+      lunum.array({11,12,13,14,15,16,17,18}, lunum.short),
+      lunum.array({21,22,23,24,25,26,27,28}, lunum.int),
+      lunum.array({31,32,33,34,35,36,37,38}, lunum.long),
+      lunum.array({41,42,43,44,45,46,47,48}, lunum.size_t)
    }
 
    -- integer only tests
@@ -394,8 +394,8 @@ local function test5()
       end
    end
 
-   t[#t+1] = lunum.array({1,2,3,4,5,6,7,8}, lunum.float)
-   t[#t+1] = lunum.array({1,2,3,4,5,6,7,8}, lunum.double)
+   t[#t+1] = lunum.array({51,52,53,54,55,56,57,58}, lunum.float)
+   t[#t+1] = lunum.array({61,62,63,64,65,66,67,68}, lunum.double)
 
    -- real only tests
    for i = 1,#t do
@@ -416,14 +416,14 @@ local function test5()
    end
 
    local t = {
-      lunum.array({-5,-4,-3,-2,-1,1,2,3,4,5,6,7,8}, lunum.char),
-      lunum.array({-5,-4,-3,-2,-1,1,2,3,4,5,6,7,8}, lunum.short),
-      lunum.array({-5,-4,-3,-2,-1,1,2,3,4,5,6,7,8}, lunum.int),
-      lunum.array({-5,-4,-3,-2,-1,1,2,3,4,5,6,7,8}, lunum.long),
-      lunum.array({ 1, 1, 1, 1, 1,1,2,3,4,5,6,7,8}, lunum.size_t),
-      lunum.array({-5,-4,-3,-2,-1,1,2,3,4,5,6,7,8}, lunum.float),
-      lunum.array({-5,-4,-3,-2,-1,1,2,3,4,5,6,7,8}, lunum.double),
-      lunum.array({-5,-4,-3,-2,-1,1,2,3,4,5,6,7,8}, lunum.complex)
+      lunum.array({ -5, -4, -3, -2, -1,  1,  2,  3,  4,  5}, lunum.char),
+      lunum.array({-15,-14,-13,-12,-11, 11, 12, 13, 14, 15}, lunum.short),
+      lunum.array({-25,-24,-23,-22,-21, 21, 22, 23, 24, 25}, lunum.int),
+      lunum.array({-35,-34,-33,-32,-31, 31, 32, 33, 34, 35}, lunum.long),
+      lunum.array({ 36, 37, 38, 39, 40, 41, 42, 43, 44, 45}, lunum.size_t),
+      lunum.array({-55,-54,-53,-52,-51, 51, 52, 53, 54, 55}, lunum.float),
+      lunum.array({-65,-64,-63,-62,-61, 61, 62, 63, 64, 65}, lunum.double),
+      lunum.array({-75,-74,-73,-72,-71, 71, 72, 73, 74, 75}, lunum.complex)
    }
 
    -- real and complex tests
